@@ -1,0 +1,41 @@
+#[macro_use]
+extern crate diesel;
+#[macro_use]
+extern crate serde_derive;
+
+use actix_web::{web, middleware, App, HttpResponse, HttpServer, Responder};
+use diesel::prelude::*;
+use diesel::r2d2::{self, ConnectionManager};
+use dotenv;
+
+mod models;
+mod schema;
+
+type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
+
+async fn index(info: web::Path<(u32, String)>) -> impl Responder {
+    format!("Hello {}! id:{}", info.1, info.0)
+}
+
+fn main() {
+    dotenv::dotenv().ok();
+
+    let connspec = std::env::var("DATABASE_URL").expect("DATABASE_URL");
+    let manager = ConnectionManager::<PgConnection>::new(connspec);
+    let pool: Pool = r2d2::Pool::builder()
+        .build(manager)
+        .expect("Failed to create pool.");
+
+    HttpServer::new(move || {
+        App::new()
+            .data(pool.clone())
+            .wrap(middleware::Logger::default())
+            .service(
+            web::resource("/{id}/{name}").to(index)
+            )
+    })
+        .bind("127.0.0.1:8088")
+        .unwrap()
+        .run()
+        .unwrap();
+}

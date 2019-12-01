@@ -1,0 +1,674 @@
+openapi: '3.0.2'
+info:
+  title: Valyou
+  version: '1.0'
+servers:
+  - url: https://api.server.test/v1
+tags:
+  - name: Journals
+  - name: Entries
+  - name: Profiles
+  - name: Friends
+  - name: User
+  - name: Account
+paths:
+  /entry:
+    post:
+      tags:
+        - Entries
+      security:
+        - LoggedIn: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Entry"
+      responses:
+        '201':
+          description: Entry posted successfully.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Entry"
+                required:
+                 - content
+        '400':
+          description: Invalid input
+        '401':
+          description: Login required
+  /entry/{entryid}:
+    parameters:
+        - name: entryid
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Snowflake"
+    get:
+      description: Retrieves a single entry.
+      tags:
+        - Entries
+      security:
+        - LoggedIn: []
+      responses:
+        '200':
+          description: Entry found and returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Entry"
+        '401':
+          description: Login required
+        '404':
+          description: Journal not found
+    patch:
+      description: Update entry. Editing content can only be done within 24 hours of the creation of the entry.
+      tags:
+        - Entries
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Entry"
+      security:
+        - LoggedIn: []
+      responses:
+        '200':
+          description: Entry updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Entry"
+        '401':
+          description: Login required
+        '403':
+          description: Forbidden
+        '404':
+          description: Entry not found
+  /journal:
+    post:
+      tags:
+        - Journals
+      summary: Create new journal
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Journal"
+      security:
+        - LoggedIn: []
+      responses:
+        '201':
+          description: Journal created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Journal"
+        '400':
+          description: Invalid input
+        '401':
+          description: Login required
+    get:
+      summary: Get a list of journals relavent by the user
+      description: Will include default journals as well as user created journals.
+      tags:
+        - Journals
+      security:
+        - LoggedIn: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Journal"
+        '401':
+          description: Login required
+  /journal/{journalid}:
+    parameters:
+      - name: journalid
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Snowflake"
+    get:
+      tags:
+        - Journals
+      summary: Get a specific journal
+      security:
+        - LoggedIn: []
+      responses:
+        '200':
+          description: Journal found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Journal"
+        '404':
+          description: Journal not found
+    patch:
+      description: Update a Journal
+      tags:
+        - Journals
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Journal"
+      security:
+        - LoggedIn: []
+      responses:
+        '201':
+          description: Journal updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Journal"
+        '400':
+          description: Bad request
+        '401':
+          description: Login required
+        '403':
+          description: Forbidden
+        '404':
+          description: Journal not found
+  /user/timeline/{method}:
+    get:
+      tags:
+        - User
+      summary: Get a list of entries created by the user
+      parameters:
+        - $ref: "#/components/parameters/Method"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/ID"
+      security:
+        - LoggedIn: []
+      responses:
+        '200':
+          $ref: "#/components/responses/EntryList"
+        '400':
+          description: Bad request
+        '401':
+          description: Login required
+  /user/feed/{method}:
+    get:
+      tags:
+        - User
+      summary: Get a list of entries relavent to the user
+      parameters:
+        - $ref: "#/components/parameters/Method"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/ID"
+      security:
+        - LoggedIn: []
+      responses:
+        '200':
+          $ref: "#/components/responses/EntryList"
+        '400':
+          description: Bad request
+        '401':
+          description: Login required
+  /user/{userid}/profile:
+    get:
+      summary: Get a user's profile
+      tags:
+        - Profiles
+      security:
+        - LoggedIn: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+        '400':
+          description: Bad request
+        '401':
+          description: Login required
+  /user/profile:
+    get:
+      summary: Get current user's profile
+      tags:
+        - Profiles
+      security:
+        - LoggedIn: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+        '400':
+          description: Bad request
+        '401':
+          description: Login required
+    patch:
+      summary: Edit current user's profile
+      tags:
+        - Profiles
+      security:
+        - LoggedIn: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+        '400':
+          description: Bad request
+        '401':
+          description: Login required
+  /user/friends:
+    get:
+      tags:
+        - Friends
+      summary: Get the user's friends
+      security:
+        - LoggedIn: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Friendship"
+        '400':
+          description: Bad request
+  /user/{userid}/friends:
+    get:
+      tags:
+        - Friends
+      summary: Get a user's friends
+      parameters:
+        - name: userid
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Snowflake"
+      security:
+        - LoggedIn: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Friendship"
+        '400':
+          description: Bad request
+        '403':
+          description: Forbidden
+  /user/{userid}/friends/request:
+    post:
+      tags:
+        - Friends
+      summary: Send a friend request to a user
+      parameters:
+        - name: userid
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Snowflake"
+      security:
+        - LoggedIn: []
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Bad request
+        '403':
+          description: Forbidden
+  /user/friends/request/{method}:
+    get:
+      tags:
+        - Friends
+      summary: Get the user's pending friend requests
+      parameters:
+        - $ref: "#/components/parameters/Method"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/ID"
+      security:
+        - LoggedIn: []
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad request
+        '401':
+          description: Login required
+  /user/friends/request/{requestid}/{action}:
+    get:
+      tags:
+        - Friends
+      summary: Accept or deny a friend request
+      description: Only the recipient can accept a friend request, but either can deny
+      parameters:
+        - name: requestid
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Snowflake"
+        - name: action
+          in: path
+          required: true
+          schema:
+            type: string
+            enum:
+              - accept
+              - deny
+      security:
+        - LoggedIn: []
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad request
+        '401':
+          description: Login required
+  /account/settings:
+    get:
+      tags:
+        - Account
+      summary: Get user settings
+      security:
+        - LoggedIn: []
+      responses:
+        '200':
+          $ref: "#/components/responses/AccountSettings"
+        '401':
+          description: Login required
+    patch:
+      tags:
+        - Account
+      summary: Change user settings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Settings"
+      security:
+        - LoggedIn: []
+      responses:
+        '204':
+          description: Update successful
+        '400':
+          description: Bad request
+        '401':
+          description: Login required
+  /account:
+    post:
+      tags:
+        - Account
+      summary: Create a new account
+      requestBody:
+        $ref: "#/components/schemas/Account"
+      responses:
+        '204':
+          description: Account created
+        '400':
+          description: Bad request
+    get:
+      tags:
+        - Account
+      summary: Get current account details
+      security:
+        - LoggedIn: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Account"
+        '401':
+          description: Login required
+    patch:
+      tags:
+        - Account
+      summary: Edit account details
+      requestBody:
+        $ref: "#/components/schemas/Account"
+      security:
+        - LoggedIn: []
+      responses:
+        '204':
+          description: Account created
+        '400':
+          description: Bad request
+  /account/auth:
+    get:
+      tags:
+        - Account
+      summary: Login as a user
+      parameters:
+        - name: email
+          in: header
+          required: true
+          schema:
+            type: string
+            format: email
+        - name: password
+          in: header
+          required: true
+          schema:
+            type: string
+            format: password
+      responses:
+        '200':
+          description: Login successful
+        '400':
+          description: Bad username/password
+    delete:
+      tags:
+        - Account
+      summary: Log out
+      responses:
+        '204':
+          description: Logged out
+        '401':
+          description: Login required
+components:    
+  schemas:
+    Snowflake:
+      type: string
+      readOnly: true
+      description: A globally unique, time sortable id
+      example: 02465324613585
+    Profile:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/Snowflake"
+        username:
+          type: string
+          readOnly: true
+          example: personman123
+        bio:
+          type: string
+          example: I am a person!
+    Account:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        username:
+          type: string
+          example: personman123
+        password:
+          type: string
+          format: password
+          writeOnly: true
+        name:
+          type: string
+          example: Person Mann
+        phone:
+          type: string
+          example: "18181234567"
+        joined_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_at:
+          type: string
+          format: date-time
+          nullable: true
+          readOnly: true
+    Settings:
+      type: object
+      properties:
+        profile_visibility:
+          $ref: "#/components/schemas/Visibility"
+    Visibility:
+      type: string
+      enum:
+        - public
+        - friends
+        - private
+    FriendRequest:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/Snowflake"
+        from:
+          $ref: "#/components/schemas/Profile"
+        sent:
+          type: string
+          format: date-time
+    Friendship:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/Snowflake"
+        with:
+          $ref: "#/components/schemas/Profile"
+        since:
+          type: string
+          format: date-time
+    Entry:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/Snowflake"
+        creator:
+          type: boolean
+          description: Whether or not the user is the author of this entry
+          readOnly: true
+        author:
+          $ref: "#/components/schemas/Snowflake"
+        created_timestamp:
+          type: string
+          format: date-time
+          readOnly: true
+        edited_timestamp:
+          type: string
+          format: date-time
+          nullable: true
+          readOnly: true
+        edited_content_timestamp:
+          type: string
+          format: date-time
+          nullable: true
+          readOnly: true
+        content:
+          type: string
+        significance:
+          type: number
+          format: float
+        tags:
+          type: array
+          items:
+            type: string
+        journal:
+          allOf:
+            - $ref: "#/components/schemas/Snowflake"
+          readOnly: false
+        visibility:
+          $ref: "#/components/schemas/Visibility"
+    Journal:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/Snowflake"
+        creator:
+          type: boolean
+          description: Whether or not the user is the creator of this Journal
+          readOnly: true
+        author:
+          $ref: "#/components/schemas/Snowflake"
+        created_timestamp:
+          type: string
+          format: date-time
+          readOnly: true
+        edited_timestamp:
+          type: string
+          format: date-time
+          nullable: true
+          readOnly: true
+        name:
+          type: string
+        description:
+          type: string
+        default_visibility:
+          $ref: "#/components/schemas/Visibility"
+      required:
+        - name
+  responses:
+    AccountSettings:
+      description: OK
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Settings"
+    EntryList:
+      description: OK
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/Entry"
+  parameters:
+    ID:
+      name: id
+      description: The id of the item to get items relative to.
+      in: query
+      required: true
+      schema:
+        $ref: "#/components/schemas/Snowflake"
+    Limit:
+      name: limit
+      description: The maximum number of items to get
+      in: query
+      required: false
+      schema:
+        type: integer
+        default: 20
+    Method:
+      name: method
+      description: Where to get the items relative to the given id.
+      in: path
+      required: true
+      schema:
+        type: string
+        enum:
+          - around
+          - before
+          - after
+
+
+
+  securitySchemes:
+    LoggedIn:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

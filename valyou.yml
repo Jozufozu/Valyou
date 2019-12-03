@@ -228,70 +228,19 @@ paths:
           description: Bad request
         '401':
           description: Login required
-  /user/profile:
-    get:
-      summary: Get current user's profile
-      tags:
-        - Profiles
-      security:
-        - LoggedIn: []
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Profile"
-        '400':
-          description: Bad request
-        '401':
-          description: Login required
-    patch:
-      summary: Edit current user's profile
-      tags:
-        - Profiles
-      security:
-        - LoggedIn: []
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Profile"
-        '400':
-          description: Bad request
-        '401':
-          description: Login required
-  /user/friends:
-    get:
-      tags:
-        - Friends
-      summary: Get the user's friends
-      security:
-        - LoggedIn: []
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Friendship"
-        '400':
-          description: Bad request
+        '403':
+          description: Blocked by user
   /user/{userid}/friends:
+    parameters:
+      - name: userid
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Snowflake"
     get:
       tags:
         - Friends
       summary: Get a user's friends
-      parameters:
-        - name: userid
-          in: path
-          required: true
-          schema:
-            $ref: "#/components/schemas/Snowflake"
       security:
         - LoggedIn: []
       responses:
@@ -302,22 +251,17 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/Friendship"
+                  $ref: "#/components/schemas/Relationship"
         '400':
           description: Bad request
+        '401':
+          description: Login required
         '403':
           description: Forbidden
-  /user/{userid}/friends/request:
     post:
       tags:
         - Friends
       summary: Send a friend request to a user
-      parameters:
-        - name: userid
-          in: path
-          required: true
-          schema:
-            $ref: "#/components/schemas/Snowflake"
       security:
         - LoggedIn: []
       responses:
@@ -325,8 +269,45 @@ paths:
           description: OK
         '400':
           description: Bad request
+        '401':
+          description: Login required
         '403':
-          description: Forbidden
+          description: Blocked by user
+    delete:
+      tags:
+        - Friends
+      summary: Remove a user as a friend
+      security:
+        - LoggedIn: []
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Bad request
+        '401':
+          description: Login required
+        '403':
+          description: Blocked by user
+  /user/{userid}/block:
+    get:
+      tags:
+        - Friends
+      summary: Block a user
+      parameters:
+        - name: userid
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Snowflake"
+      security:
+        - LoggedIn: []
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad request
+        '401':
+          description: Login required
   /user/friends/request/{method}:
     get:
       tags:
@@ -345,14 +326,14 @@ paths:
           description: Bad request
         '401':
           description: Login required
-  /user/friends/request/{requestid}/{action}:
+  /user/{userid}/friends/request/{action}:
     get:
       tags:
         - Friends
       summary: Accept or deny a friend request
       description: Only the recipient can accept a friend request, but either can deny
       parameters:
-        - name: requestid
+        - name: userid
           in: path
           required: true
           schema:
@@ -374,6 +355,8 @@ paths:
           description: Bad request
         '401':
           description: Login required
+        '403':
+          description: Blocked by user
   /account/settings:
     get:
       tags:
@@ -471,6 +454,8 @@ paths:
       tags:
         - Account
       summary: Log out
+      security:
+        - LoggedIn: []
       responses:
         '204':
           description: Logged out
@@ -492,6 +477,8 @@ components:
           type: string
           readOnly: true
           example: personman123
+        friends:
+          type: boolean
         bio:
           type: string
           example: I am a person!
@@ -534,21 +521,9 @@ components:
         - public
         - friends
         - private
-    FriendRequest:
+    Relationship:
       type: object
       properties:
-        id:
-          $ref: "#/components/schemas/Snowflake"
-        from:
-          $ref: "#/components/schemas/Profile"
-        sent:
-          type: string
-          format: date-time
-    Friendship:
-      type: object
-      properties:
-        id:
-          $ref: "#/components/schemas/Snowflake"
         with:
           $ref: "#/components/schemas/Profile"
         since:
@@ -584,6 +559,9 @@ components:
         significance:
           type: number
           format: float
+        hidden:
+          type: boolean
+          default: true
         tags:
           type: array
           items:
@@ -664,9 +642,6 @@ components:
           - around
           - before
           - after
-
-
-
   securitySchemes:
     LoggedIn:
       type: http

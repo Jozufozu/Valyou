@@ -52,7 +52,17 @@ table! {
         created -> Timestamp,
         modified -> Nullable<Timestamp>,
         content -> Varchar,
-        reply_to -> Nullable<Int8>,
+        starred -> Bool,
+    }
+}
+
+table! {
+    use crate::models::{Status, Visibility};
+    use diesel::sql_types::*;
+
+    feedback_replies (child) {
+        child -> Int8,
+        parent -> Int8,
     }
 }
 
@@ -127,6 +137,7 @@ allow_tables_to_appear_in_same_query!(
     entries,
     entry_tags,
     feedback,
+    feedback_replies,
     journals,
     profiles,
     relations,

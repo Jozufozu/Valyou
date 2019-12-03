@@ -5,5 +5,10 @@ CREATE TABLE feedback (
     created     timestamp   NOT NULL    default now(),
     modified    timestamp,
     content     VARCHAR     NOT NULL,
-    reply_to    BIGINT      REFERENCES feedback
+    starred     BOOLEAN     NOT NULL    default FALSE
+);
+
+CREATE TABLE feedback_replies (
+    child       BIGINT  PRIMARY KEY     REFERENCES feedback,
+    parent      BIGINT  NOT NULL        REFERENCES feedback
 );

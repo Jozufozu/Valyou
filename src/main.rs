@@ -7,14 +7,25 @@ use actix_web::{web, middleware, App, HttpResponse, HttpServer, Responder};
 use diesel::prelude::*;
 use diesel::r2d2::{self, ConnectionManager};
 use dotenv;
+use frank_jwt as jwt;
+use actix_identity::{CookieIdentityPolicy, IdentityService, Identity};
 
 mod models;
 mod schema;
 
 type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
 
-async fn index(info: web::Path<(u32, String)>) -> impl Responder {
-    format!("Hello {}! id:{}", info.1, info.0)
+async fn login(request: web::HttpRequest) -> impl Responder {
+    ""
+}
+
+async fn logout(id: Identity) -> impl Responder {
+    if id.identity().is_none() {
+        HttpResponse::Unauthorized().finish()
+    } else {
+        id.forget();
+        HttpResponse::NoContent().finish()
+    }
 }
 
 fn main() {
@@ -29,7 +40,17 @@ fn main() {
     HttpServer::new(move || {
         App::new()
             .data(pool.clone())
+            .wrap(IdentityService::new(
+                CookieIdentityPolicy::new(&[0; 32])
+                    .name("auth")
+                    .secure(false)
+            ))
             .wrap(middleware::Logger::default())
+            .service(
+                web::scope("/account")
+                    .route("/auth", web::get().to(login))
+                    .route("/auth", web::delete().to(logout))
+            )
             .service(
             web::resource("/{id}/{name}").to(index)
             )

@@ -3,4 +3,4 @@
 
 [print_schema]
 file = "src/schema.rs"
-import_types = ["crate::models::{Status, Visibility}", "diesel::sql_types::*"]
+import_types = ["crate::models::{status::Status, visibility::Visibility}", "diesel::sql_types::*"]

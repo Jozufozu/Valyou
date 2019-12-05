@@ -10,10 +10,12 @@ edition = "2018"
 actix-web = "2.0.0-alpha.1"
 bcrypt = "0.6.1"
 frostflake = "0.2.1"
-frank_jwt = "3.1.2"
+jsonwebtoken = "7.0.0-alpha.2"
 actix-identity = "0.2.0-alpha.1"
-serde_derive = "1"
-serde = "1"
-diesel = { version = "1.4.3", features = ["postgres", "r2d2"] }
+serde_derive = "1.0.103"
+serde = "1.0.103"
+serde_json = "1.0.44"
+diesel = { version = "1.4.3", features = ["postgres", "r2d2", "chrono"] }
 dotenv = "0.15.0"
 r2d2 = "0.8.7"
+chrono = { version = "0.4.10", features = ["serde"] }

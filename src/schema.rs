@@ -1,11 +1,11 @@
 table! {
-    use crate::models::{Status, Visibility};
+    use crate::models::{status::Status, visibility::Visibility};
     use diesel::sql_types::*;
 
     accounts (id) {
         id -> Int8,
         email -> Varchar,
-        passhash -> Varchar,
+        hash -> Varchar,
         created -> Timestamp,
         modified -> Nullable<Timestamp>,
         phone -> Nullable<Varchar>,
@@ -13,7 +13,7 @@ table! {
 }
 
 table! {
-    use crate::models::{Status, Visibility};
+    use crate::models::{status::Status, visibility::Visibility};
     use diesel::sql_types::*;
 
     entries (id) {
@@ -31,7 +31,7 @@ table! {
 }
 
 table! {
-    use crate::models::{Status, Visibility};
+    use crate::models::{status::Status, visibility::Visibility};
     use diesel::sql_types::*;
 
     entry_tags (id) {
@@ -42,7 +42,7 @@ table! {
 }
 
 table! {
-    use crate::models::{Status, Visibility};
+    use crate::models::{status::Status, visibility::Visibility};
     use diesel::sql_types::*;
 
     feedback (id) {
@@ -57,7 +57,7 @@ table! {
 }
 
 table! {
-    use crate::models::{Status, Visibility};
+    use crate::models::{status::Status, visibility::Visibility};
     use diesel::sql_types::*;
 
     feedback_replies (child) {
@@ -67,7 +67,7 @@ table! {
 }
 
 table! {
-    use crate::models::{Status, Visibility};
+    use crate::models::{status::Status, visibility::Visibility};
     use diesel::sql_types::*;
 
     journals (id) {
@@ -82,7 +82,7 @@ table! {
 }
 
 table! {
-    use crate::models::{Status, Visibility};
+    use crate::models::{status::Status, visibility::Visibility};
     use diesel::sql_types::*;
 
     profiles (id) {
@@ -93,7 +93,7 @@ table! {
 }
 
 table! {
-    use crate::models::{Status, Visibility};
+    use crate::models::{status::Status, visibility::Visibility};
     use diesel::sql_types::*;
 
     relations (id) {
@@ -106,7 +106,7 @@ table! {
 }
 
 table! {
-    use crate::models::{Status, Visibility};
+    use crate::models::{status::Status, visibility::Visibility};
     use diesel::sql_types::*;
 
     user_visibility (id) {
@@ -116,7 +116,7 @@ table! {
 }
 
 table! {
-    use crate::models::{Status, Visibility};
+    use crate::models::{status::Status, visibility::Visibility};
     use diesel::sql_types::*;
 
     usernames (id) {

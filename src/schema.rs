@@ -35,7 +35,7 @@ table! {
     use diesel::sql_types::*;
 
     entry_tags (id) {
-        id -> Int4,
+        id -> Int8,
         entry -> Nullable<Int8>,
         tag -> Varchar,
     }
@@ -53,16 +53,6 @@ table! {
         modified -> Nullable<Timestamp>,
         content -> Varchar,
         starred -> Bool,
-    }
-}
-
-table! {
-    use crate::models::{status::Status, visibility::Visibility};
-    use diesel::sql_types::*;
-
-    feedback_replies (child) {
-        child -> Int8,
-        parent -> Int8,
     }
 }
 
@@ -97,7 +87,7 @@ table! {
     use diesel::sql_types::*;
 
     relations (id) {
-        id -> Int4,
+        id -> Int8,
         user_from -> Int8,
         user_to -> Int8,
         since -> Timestamp,
@@ -131,13 +121,14 @@ joinable!(entry_tags -> entries (entry));
 joinable!(feedback -> entries (entry));
 joinable!(feedback -> profiles (author));
 joinable!(journals -> profiles (owner));
+joinable!(user_visibility -> profiles (id));
+joinable!(usernames -> profiles (id));
 
 allow_tables_to_appear_in_same_query!(
     accounts,
     entries,
     entry_tags,
     feedback,
-    feedback_replies,
     journals,
     profiles,
     relations,

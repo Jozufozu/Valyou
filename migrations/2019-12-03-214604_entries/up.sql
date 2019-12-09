@@ -1,6 +1,6 @@
 
 CREATE TABLE entries (
-    id              BIGINT      PRIMARY KEY,
+    id              BIGINT      PRIMARY KEY default id_generator(),
     author          BIGINT      NOT NULL    REFERENCES profiles,
     journal         BIGINT      NOT NULL    REFERENCES journals,
     visibility      visibility  NOT NULL,
@@ -13,7 +13,7 @@ CREATE TABLE entries (
 );
 
 CREATE TABLE entry_tags (
-    id      SERIAL  PRIMARY KEY,
+    id      BIGINT  PRIMARY KEY default id_generator(),
     entry   BIGINT  REFERENCES entries,
     tag     VARCHAR NOT NULL
 );

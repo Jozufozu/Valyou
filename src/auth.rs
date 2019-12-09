@@ -8,7 +8,10 @@ use frostflake;
 
 use crate::{Pool, errors::*, models::Account};
 use std::str::FromStr;
-use crate::errors::ServiceError::BadRequest;
+use crate::errors::Error::BadRequest;
+use frostflake::GeneratorPool;
+use diesel::expression::dsl::count;
+use crate::models::CreateAccount;
 
 #[derive(Debug, Deserialize)]
 pub struct AuthData {
@@ -16,23 +19,57 @@ pub struct AuthData {
     pub password: String
 }
 
-pub fn verify(id: Identity, db: web::Data<Pool>) -> Result<u64> {
-    if let Some(userid) = id.identity() {
-        u64::from_str(&userid).map_err(|| BadRequest("Invalid auth cookie".to_owned()))
+#[derive(Debug, Deserialize)]
+pub struct RegisterData {
+    pub email: String,
+    pub password: String,
+    pub phone: Option<String>,
+}
+
+pub async fn show(ident: Identity) -> impl Responder {
+    if let Some(name) = ident.identity() {
+        name
     } else {
-        Err(ServiceError::Unauthorized)
+        "Not logged in".to_owned()
     }
 }
 
-pub async fn login(data: web::Json<AuthData>, id: Identity, db: web::Data<Pool>) -> impl Responder {
+pub async fn register(data: web::Json<RegisterData>, db: web::Data<Pool>) -> impl Responder {
     use crate::schema::accounts::dsl::*;
 
-    let conn: &PgConnection = &pool.get().unwrap();
-    let mut items = accounts.filter(email.eq(&data.email)).load::<Account>(conn)?;
+    if let Ok(hashed_password) = bcrypt::hash(&data.password, 9) {
+        let new_account = CreateAccount {
+            email: data.email.clone(),
+            hash: hashed_password,
+            phone: data.phone.clone()
+        };
+        diesel::insert_into(accounts)
+            .values(new_account)
+            .execute(&db.get().unwrap());
 
-    if let Some(account) = items.pop() {
-        if bcrypt::verify(&data.password, &account.hash) {
-            id.remember(String::from(&account.id));
+        HttpResponse::NoContent().finish()
+    } else {
+        HttpResponse::InternalServerError().finish()
+    }
+}
+
+pub async fn login(data: web::Json<AuthData>, ident: Identity, pool: web::Data<Pool>) -> impl Responder {
+    use crate::schema::accounts::dsl::*;
+
+    if ident.identity().is_some() {
+        return HttpResponse::Unauthorized().finish();
+    }
+
+    let conn: &PgConnection = &pool.get().unwrap();
+    if let Ok(mut items) = accounts.filter(email.eq(&data.email)).load::<Account>(conn) {
+        if let Some(account) = items.pop() {
+            if let Ok(verified) = bcrypt::verify(&data.password, &account.hash) {
+                if verified {
+                    ident.remember((&account).id.to_string());
+
+                    return HttpResponse::Ok().body(serde_json::to_string(&account).unwrap());
+                }
+            }
         }
     }
 

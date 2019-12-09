@@ -7,17 +7,25 @@ use diesel::{serialize, deserialize};
 
 use crate::schema::accounts;
 
-mod status;
-mod visibility;
+pub mod status;
+pub mod visibility;
 
 #[derive(Debug, Serialize, Deserialize, Queryable, Insertable)]
 #[table_name = "accounts"]
 pub struct Account {
-    pub id: u64,
+    pub id: i64,
     pub email: String,
     #[serde(skip)]
     pub hash: String,
     pub created: chrono::NaiveDateTime,
     pub modified: Option<chrono::NaiveDateTime>,
+    pub phone: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Insertable)]
+#[table_name = "accounts"]
+pub struct CreateAccount {
+    pub email: String,
+    pub hash: String,
     pub phone: Option<String>,
 }

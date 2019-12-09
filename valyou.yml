@@ -428,23 +428,12 @@ paths:
         '400':
           description: Bad request
   /account/auth:
-    get:
+    post:
       tags:
         - Account
       summary: Login as a user
-      parameters:
-        - name: email
-          in: header
-          required: true
-          schema:
-            type: string
-            format: email
-        - name: password
-          in: header
-          required: true
-          schema:
-            type: string
-            format: password
+      requestBody:
+        $ref: "#/components/schemas/Account"
       responses:
         '200':
           description: Login successful

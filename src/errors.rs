@@ -2,7 +2,9 @@ use actix_web::{ResponseError, HttpResponse};
 use diesel::result::{Error as DBError, DatabaseErrorKind};
 use std::fmt::Display;
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub type ValyouResult<T> = std::result::Result<T, Error>;
+
+pub type RequestResult = std::result::Result<HttpResponse, HttpResponse>;
 
 #[derive(Debug, Display)]
 pub enum Error {

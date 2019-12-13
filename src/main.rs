@@ -9,8 +9,6 @@ use diesel::r2d2::{self, ConnectionManager};
 use dotenv;
 use actix_identity::{CookieIdentityPolicy, IdentityService, Identity};
 use bcrypt;
-use frostflake;
-use frostflake::GeneratorPoolOptions;
 
 mod models;
 mod schema;

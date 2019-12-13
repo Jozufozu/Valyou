@@ -21,11 +21,3 @@ pub struct Account {
     pub modified: Option<chrono::NaiveDateTime>,
     pub phone: Option<String>,
 }
-
-#[derive(Debug, Deserialize, Insertable)]
-#[table_name = "accounts"]
-pub struct CreateAccount {
-    pub email: String,
-    pub hash: String,
-    pub phone: Option<String>,
-}

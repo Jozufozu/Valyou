@@ -393,7 +393,10 @@ paths:
         - Account
       summary: Create a new account
       requestBody:
-        $ref: "#/components/schemas/Account"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Account"
       responses:
         '204':
           description: Account created
@@ -433,7 +436,18 @@ paths:
         - Account
       summary: Login as a user
       requestBody:
-        $ref: "#/components/schemas/Account"
+        content:
+          application/json:
+            schema:
+            email:
+              type: string
+              format: email
+            username:
+              type: string
+              example: personman123
+            password:
+              type: string
+              format: password
       responses:
         '200':
           description: Login successful

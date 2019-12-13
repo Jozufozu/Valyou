@@ -4,14 +4,12 @@ use diesel::r2d2::{self, ConnectionManager};
 use dotenv;
 use actix_identity::{CookieIdentityPolicy, IdentityService, Identity};
 use bcrypt;
-use frostflake;
 
 use crate::{Pool, errors::*, models::Account};
 use std::str::FromStr;
 use crate::errors::Error::BadRequest;
-use frostflake::GeneratorPool;
 use diesel::expression::dsl::count;
-use crate::models::CreateAccount;
+use diesel::sql_types::BigInt;
 
 #[derive(Debug, Deserialize)]
 pub struct AuthData {
@@ -23,7 +21,7 @@ pub struct AuthData {
 pub struct RegisterData {
     pub email: String,
     pub password: String,
-    pub phone: Option<String>,
+    pub username: String,
 }
 
 pub async fn show(ident: Identity) -> impl Responder {
@@ -34,23 +32,29 @@ pub async fn show(ident: Identity) -> impl Responder {
     }
 }
 
-pub async fn register(data: web::Json<RegisterData>, db: web::Data<Pool>) -> impl Responder {
+pub async fn register(data: web::Json<RegisterData>, db: web::Data<Pool>) -> RequestResult {
     use crate::schema::accounts::dsl::*;
 
-    if let Ok(hashed_password) = bcrypt::hash(&data.password, 9) {
-        let new_account = CreateAccount {
-            email: data.email.clone(),
-            hash: hashed_password,
-            phone: data.phone.clone()
-        };
-        diesel::insert_into(accounts)
-            .values(new_account)
-            .execute(&db.get().unwrap());
+    bcrypt::hash(&data.password, 9)
+        .map_err(|_| HttpResponse::InternalServerError().finish())
+        .and_then(|hashed_password| {
+            diesel::insert_into(accounts)
+                .values((email.eq(&data.email), hash.eq(&hashed_password)))
+                .returning(id)
+                .get_result(&db.get().unwrap())
+                .map_err(|_| HttpResponse::Unauthorized().finish())
+                .and_then(|user_id| set_username(db, user_id, &data.username))
+        })
+}
 
-        HttpResponse::NoContent().finish()
-    } else {
-        HttpResponse::InternalServerError().finish()
-    }
+fn set_username(db: web::Data<Pool>, user_id: i64, username: &String) -> RequestResult {
+    use crate::schema::usernames::dsl::*;
+
+    diesel::insert_into(usernames)
+        .values((id.eq(user_id), handle.eq(username)))
+        .execute(&db.get().unwrap())
+        .map(|_| HttpResponse::Ok().finish())
+        .map_err(|_| HttpResponse::Unauthorized().finish())
 }
 
 pub async fn login(data: web::Json<AuthData>, ident: Identity, pool: web::Data<Pool>) -> impl Responder {

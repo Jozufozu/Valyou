@@ -1,4 +1,4 @@
-openapi: '3.0.2'
+openapi: 3.0.0
 info:
   title: Valyou
   version: '1.0'
@@ -16,6 +16,7 @@ paths:
     post:
       tags:
         - Entries
+      summary: Create an entry
       security:
         - LoggedIn: []
       requestBody:
@@ -32,20 +33,20 @@ paths:
                 allOf:
                   - $ref: "#/components/schemas/Entry"
                 required:
-                 - content
+                  - content
         '400':
           description: Invalid input
         '401':
           description: Login required
   /entry/{entryid}:
     parameters:
-        - name: entryid
-          in: path
-          required: true
-          schema:
-            $ref: "#/components/schemas/Snowflake"
+      - name: entryid
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Snowflake"
     get:
-      description: Retrieves a single entry.
+      summary: Get a single entry.
       tags:
         - Entries
       security:
@@ -62,7 +63,8 @@ paths:
         '404':
           description: Journal not found
     patch:
-      description: Update entry. Editing content can only be done within 24 hours of the creation of the entry.
+      summary: Update an entry
+      description: Editing content can only be done within 24 hours of the creation of the entry.
       tags:
         - Entries
       requestBody:
@@ -73,7 +75,7 @@ paths:
       security:
         - LoggedIn: []
       responses:
-        '200':
+        '201':
           description: Entry updated
           content:
             application/json:
@@ -149,9 +151,9 @@ paths:
         '404':
           description: Journal not found
     patch:
-      description: Update a Journal
       tags:
         - Journals
+      summary: Update a Journal
       requestBody:
         content:
           application/json:
@@ -217,6 +219,16 @@ paths:
         - Profiles
       security:
         - LoggedIn: []
+      parameters:
+        - name: userid
+          in: path
+          required: true
+          schema:
+            oneOf:
+              - $ref: "#/components/schemas/Snowflake"
+              - type: string
+                enum:
+                  - self
       responses:
         '200':
           description: OK
@@ -230,13 +242,92 @@ paths:
           description: Login required
         '403':
           description: Blocked by user
+  /user:
+    get:
+      tags:
+        - Profiles
+      summary: Search for users
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: count
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Found users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Profile"
+        '204':
+          description: Nothing found
+    patch:
+      tags:
+        - Profiles
+      summary: Edit the user's profile
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Profile"
+      responses:
+        '200':
+          description: Updated
+          content:
+            appliciation/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+        '400':
+          description: Bad request
+        '401':
+          description: Login required
+  /user/self/friends:
+    get:
+      tags:
+        - Friends
+      summary: Get the current user's friends
+      security:
+        - LoggedIn: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    with:
+                      $ref: "#/components/schemas/Profile"
+                    since:
+                      type: string
+                      format: date-time
+        '400':
+          description: Bad request
+        '401':
+          description: Login required
+        '403':
+          description: Forbidden
   /user/{userid}/friends:
     parameters:
       - name: userid
         in: path
         required: true
         schema:
-          $ref: "#/components/schemas/Snowflake"
+          oneOf:
+            - $ref: "#/components/schemas/Snowflake"
+            - type: string
+              enum:
+                - self
     get:
       tags:
         - Friends
@@ -251,7 +342,13 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/Relationship"
+                  type: object
+                  properties:
+                    with:
+                      $ref: "#/components/schemas/Profile"
+                    since:
+                      type: string
+                      format: date-time
         '400':
           description: Bad request
         '401':
@@ -308,7 +405,7 @@ paths:
           description: Bad request
         '401':
           description: Login required
-  /user/friends/request/{method}:
+  /user/self/friends/request/{method}:
     get:
       tags:
         - Friends
@@ -422,7 +519,10 @@ paths:
         - Account
       summary: Edit account details
       requestBody:
-        $ref: "#/components/schemas/Account"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Account"
       security:
         - LoggedIn: []
       responses:
@@ -439,15 +539,14 @@ paths:
         content:
           application/json:
             schema:
-            email:
-              type: string
-              format: email
-            username:
-              type: string
-              example: personman123
-            password:
-              type: string
-              format: password
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
       responses:
         '200':
           description: Login successful
@@ -464,7 +563,7 @@ paths:
           description: Logged out
         '401':
           description: Login required
-components:    
+components:
   schemas:
     Snowflake:
       type: string
@@ -482,7 +581,11 @@ components:
           example: personman123
         friends:
           type: boolean
+          readOnly: true
         bio:
+          type: string
+          example: I am a person!
+        summary:
           type: string
           example: I am a person!
     Account:
@@ -504,11 +607,11 @@ components:
         phone:
           type: string
           example: "18181234567"
-        joined_at:
+        created:
           type: string
           format: date-time
           readOnly: true
-        modified_at:
+        modified:
           type: string
           format: date-time
           nullable: true
@@ -524,14 +627,6 @@ components:
         - public
         - friends
         - private
-    Relationship:
-      type: object
-      properties:
-        with:
-          $ref: "#/components/schemas/Profile"
-        since:
-          type: string
-          format: date-time
     Entry:
       type: object
       properties:

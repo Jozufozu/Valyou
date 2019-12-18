@@ -8,7 +8,7 @@ use std::io::Write;
 #[postgres(type_name = "visibility")]
 pub struct Visibility;
 
-#[derive(Debug, PartialEq, FromSqlRow, AsExpression)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, FromSqlRow, AsExpression)]
 #[sql_type = "Visibility"]
 pub enum Publicity {
     Public,

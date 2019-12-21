@@ -6,12 +6,11 @@
 #[macro_use] extern crate actix_rt;
 #[macro_use] extern crate actix_web;
 
-use actix_web::{web, middleware, App, HttpResponse, HttpServer, Responder, ResponseError};
+use actix_web::{web, middleware, App, HttpServer};
 use diesel::prelude::*;
 use diesel::r2d2::{self, ConnectionManager};
 use dotenv;
-use actix_identity::{CookieIdentityPolicy, IdentityService, Identity};
-use bcrypt;
+use actix_identity::{CookieIdentityPolicy, IdentityService};
 use std::io;
 mod models;
 mod schema;
@@ -81,6 +80,7 @@ async fn main() -> io::Result<()> {
                 .service(web::scope("/{journalid}")
                     .route("", web::get().to(journals::find))
                     .route("", web::patch().to(journals::edit))
+                    .route("/entries/{method}", web::get().to(entries::in_journal))
                 )
             )
     })

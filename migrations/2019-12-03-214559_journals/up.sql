@@ -6,5 +6,5 @@ CREATE TABLE journals (
     created     timestamp   NOT NULL    default now(),
     modified    timestamp,
     description VARCHAR,
-    visibility  visibility
+    visibility  visibility  NOT NULL
 );

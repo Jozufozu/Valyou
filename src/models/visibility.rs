@@ -4,35 +4,40 @@ use diesel::serialize::{ToSql, IsNull, Output};
 use diesel::pg::Pg;
 use std::io::Write;
 
-#[derive(SqlType)]
-#[postgres(type_name = "visibility")]
-pub struct Visibility;
+pub mod db {
+    #[derive(SqlType, QueryId)]
+    #[postgres(type_name = "visibility")]
+    pub struct Visibility;
+}
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, FromSqlRow, AsExpression)]
-#[sql_type = "Visibility"]
-pub enum Publicity {
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, FromSqlRow, AsExpression)]
+#[sql_type = "db::Visibility"]
+pub enum Visibility {
+    #[serde(rename = "public")]
     Public,
+    #[serde(rename = "private")]
     Private,
+    #[serde(rename = "friends")]
     Friends
 }
 
-impl ToSql<Visibility, Pg> for Publicity {
+impl ToSql<db::Visibility, Pg> for Visibility {
     fn to_sql<W: Write>(&self, out: &mut Output<W, Pg>) -> serialize::Result {
         match *self {
-            Publicity::Public => out.write_all(b"public")?,
-            Publicity::Private => out.write_all(b"private")?,
-            Publicity::Friends => out.write_all(b"friends")?,
+            Visibility::Public => out.write_all(b"public")?,
+            Visibility::Private => out.write_all(b"private")?,
+            Visibility::Friends => out.write_all(b"friends")?,
         }
         Ok(IsNull::No)
     }
 }
 
-impl FromSql<Visibility, Pg> for Publicity {
+impl FromSql<db::Visibility, Pg> for Visibility {
     fn from_sql(bytes: Option<&[u8]>) -> deserialize::Result<Self> {
         match not_none!(bytes) {
-            b"public" => Ok(Publicity::Public),
-            b"private" => Ok(Publicity::Private),
-            b"friends" => Ok(Publicity::Friends),
+            b"public" => Ok(Visibility::Public),
+            b"private" => Ok(Visibility::Private),
+            b"friends" => Ok(Visibility::Friends),
             _ => Err("Unrecognized enum variant".into()),
         }
     }

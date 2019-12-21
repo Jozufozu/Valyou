@@ -1,14 +1,14 @@
 use actix_web::{ResponseError, HttpResponse};
 use diesel::result::{Error as DBError, DatabaseErrorKind};
 use std::fmt::Display;
-use std::error::Error;
+use std::error::Error as STDError;
 
-pub type ValyouResult<T> = std::result::Result<T, ValyouError>;
+pub type ValyouResult<T> = std::result::Result<T, Error>;
 
 pub type RequestResult = std::result::Result<HttpResponse, HttpResponse>;
 
 #[derive(Debug, Display)]
-pub enum ValyouError {
+pub enum Error {
     #[display(fmt = "Internal Server Error")]
     InternalServerError,
 
@@ -17,38 +17,47 @@ pub enum ValyouError {
 
     #[display(fmt = "Unauthorized")]
     Unauthorized,
+
+    #[display(fmt = "Not Found")]
+    NotFound,
 }
 
-impl Error for ValyouError {
+impl STDError for Error {
 
 }
 
 // impl ResponseError trait allows to convert our errors into http responses with appropriate data
-impl ResponseError for ValyouError {
+impl ResponseError for Error {
     fn error_response(&self) -> HttpResponse {
         match self {
-            ValyouError::InternalServerError => {
+            Error::InternalServerError => {
                 HttpResponse::InternalServerError().json("Internal Server Error, Please try later")
             }
-            ValyouError::BadRequest(ref message) => HttpResponse::BadRequest().json(message),
-            ValyouError::Unauthorized => HttpResponse::Unauthorized().json("Unauthorized"),
+            Error::BadRequest(ref message) => HttpResponse::BadRequest().json(message),
+            Error::Unauthorized => HttpResponse::Unauthorized().json("Unauthorized"),
+            Error::NotFound => HttpResponse::NotFound().finish()
         }
     }
 }
 
-impl From<DBError> for ValyouError {
-    fn from(error: DBError) -> ValyouError {
+impl From<DBError> for Error {
+    fn from(error: DBError) -> Error {
         // Right now we just care about UniqueViolation from diesel
         // But this would be helpful to easily map errors as our app grows
         match error {
             DBError::DatabaseError(kind, info) => {
                 if let DatabaseErrorKind::UniqueViolation = kind {
                     let message = info.details().unwrap_or_else(|| info.message()).to_string();
-                    return ValyouError::BadRequest(message);
+                    return Error::BadRequest(message);
                 }
-                ValyouError::InternalServerError
-            }
-            _ => ValyouError::InternalServerError,
+                Error::InternalServerError
+            },
+            DBError::NotFound => Error::NotFound,
+            _ => Error::InternalServerError,
         }
     }
+}
+
+impl From<r2d2::Error> for Error {
+    fn from(_: r2d2::Error) -> Self { Error::InternalServerError }
 }

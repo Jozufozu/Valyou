@@ -1,5 +1,5 @@
 table! {
-    use crate::models::{status::Status, visibility::Visibility};
+    use crate::models::{status::Status, visibility::db::Visibility};
     use diesel::sql_types::*;
 
     accounts (id) {
@@ -13,7 +13,7 @@ table! {
 }
 
 table! {
-    use crate::models::{status::Status, visibility::Visibility};
+    use crate::models::{status::Status, visibility::db::Visibility};
     use diesel::sql_types::*;
 
     entries (id) {
@@ -31,7 +31,7 @@ table! {
 }
 
 table! {
-    use crate::models::{status::Status, visibility::Visibility};
+    use crate::models::{status::Status, visibility::db::Visibility};
     use diesel::sql_types::*;
 
     entry_tags (id) {
@@ -42,7 +42,7 @@ table! {
 }
 
 table! {
-    use crate::models::{status::Status, visibility::Visibility};
+    use crate::models::{status::Status, visibility::db::Visibility};
     use diesel::sql_types::*;
 
     feedback (id) {
@@ -57,7 +57,7 @@ table! {
 }
 
 table! {
-    use crate::models::{status::Status, visibility::Visibility};
+    use crate::models::{status::Status, visibility::db::Visibility};
     use diesel::sql_types::*;
 
     journals (id) {
@@ -67,23 +67,25 @@ table! {
         created -> Timestamp,
         modified -> Nullable<Timestamp>,
         description -> Nullable<Varchar>,
-        visibility -> Nullable<Visibility>,
+        visibility -> Visibility,
     }
 }
 
 table! {
-    use crate::models::{status::Status, visibility::Visibility};
+    use crate::models::{status::Status, visibility::db::Visibility};
     use diesel::sql_types::*;
 
     profiles (id) {
         id -> Int8,
+        visibility -> Visibility,
         summary -> Nullable<Varchar>,
         bio -> Nullable<Varchar>,
+        modified -> Nullable<Timestamp>,
     }
 }
 
 table! {
-    use crate::models::{status::Status, visibility::Visibility};
+    use crate::models::{status::Status, visibility::db::Visibility};
     use diesel::sql_types::*;
 
     relations (id) {
@@ -96,22 +98,13 @@ table! {
 }
 
 table! {
-    use crate::models::{status::Status, visibility::Visibility};
-    use diesel::sql_types::*;
-
-    user_visibility (id) {
-        id -> Int8,
-        visibility -> Visibility,
-    }
-}
-
-table! {
-    use crate::models::{status::Status, visibility::Visibility};
+    use crate::models::{status::Status, visibility::db::Visibility};
     use diesel::sql_types::*;
 
     usernames (id) {
         id -> Int8,
         handle -> Varchar,
+        modified -> Nullable<Timestamp>,
     }
 }
 
@@ -121,7 +114,7 @@ joinable!(entry_tags -> entries (entry));
 joinable!(feedback -> entries (entry));
 joinable!(feedback -> profiles (author));
 joinable!(journals -> profiles (owner));
-joinable!(user_visibility -> profiles (id));
+joinable!(profiles -> accounts (id));
 joinable!(usernames -> profiles (id));
 
 allow_tables_to_appear_in_same_query!(
@@ -132,6 +125,5 @@ allow_tables_to_appear_in_same_query!(
     journals,
     profiles,
     relations,
-    user_visibility,
     usernames,
 );

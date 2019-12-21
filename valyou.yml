@@ -176,6 +176,30 @@ paths:
           description: Forbidden
         '404':
           description: Journal not found
+  /journal/{journalid}/entries/{method}:
+    get:
+      summary: Get a list of entries in a journal
+      tags:
+        - Entries
+        - Journals
+      parameters:
+        - name: journalid
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Snowflake"
+        - $ref: "#/components/parameters/Method"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/ID"
+      responses:
+        '200':
+          $ref: "#/components/responses/EntryList"
+        '400':
+          description: Bad request
+        '401':
+          description: Login required
+        '403':
+          description: Forbidden
   /user/timeline/{method}:
     get:
       tags:
@@ -591,6 +615,8 @@ components:
     Account:
       type: object
       properties:
+        id:
+          $ref: "#/components/schemas/Snowflake"
         email:
           type: string
           format: email
@@ -601,9 +627,6 @@ components:
           type: string
           format: password
           writeOnly: true
-        name:
-          type: string
-          example: Person Mann
         phone:
           type: string
           example: "18181234567"
@@ -638,16 +661,16 @@ components:
           readOnly: true
         author:
           $ref: "#/components/schemas/Snowflake"
-        created_timestamp:
+        created:
           type: string
           format: date-time
           readOnly: true
-        edited_timestamp:
+        modified:
           type: string
           format: date-time
           nullable: true
           readOnly: true
-        edited_content_timestamp:
+        modifiedc:
           type: string
           format: date-time
           nullable: true
@@ -681,11 +704,11 @@ components:
           readOnly: true
         author:
           $ref: "#/components/schemas/Snowflake"
-        created_timestamp:
+        created:
           type: string
           format: date-time
           readOnly: true
-        edited_timestamp:
+        modified:
           type: string
           format: date-time
           nullable: true
@@ -694,7 +717,7 @@ components:
           type: string
         description:
           type: string
-        default_visibility:
+        visibility:
           $ref: "#/components/schemas/Visibility"
       required:
         - name

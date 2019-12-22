@@ -1,7 +1,7 @@
 use actix_identity::Identity;
 use actix_web::{Responder, HttpResponse, web};
 use crate::models::visibility::Visibility;
-use crate::errors::{RequestResult, Error, ValyouResult};
+use crate::errors::{Error, ValyouResult};
 use crate::Pool;
 use diesel::{prelude::*, QueryDsl};
 use crate::schema::{entries, entry_tags};
@@ -12,14 +12,21 @@ use crate::routes::account::get_identity;
 macro_rules! entries_and_friends {
     ($user:expr) => {
         {
-            use crate::schema::entries::dsl::*;
-            use crate::schema::relations::dsl::*;
+            use crate::schema::entries;
+            use crate::schema::relations;
+            use crate::schema::journals;
 
-            entries
-                .left_join(relations.on(
-                    user_from.eq(author).and(user_to.eq($user))
-                        .or(user_to.eq(author).and(user_from.eq($user)))
+            entries::table
+                .select(
+                {
+                    use self::entries::dsl::*;
+                    (id, author, journal, visibility, created, modified, modifiedc, content, significance)
+                })
+                .left_join(relations::table.on(
+                    relations::user_from.eq(entries::author).and(relations::user_to.eq($user))
+                        .or(relations::user_to.eq(entries::author).and(relations::user_from.eq($user)))
                 ))
+                .inner_join(journals::table.on(entries::journal.eq(journals::id)))
         }
     };
 }
@@ -27,14 +34,14 @@ macro_rules! entries_and_friends {
 macro_rules! visible_post {
     ($user:expr) => {
         {
-            use crate::schema::entries::dsl::*;
+            use crate::schema::entries::dsl::{author};
             use crate::schema::relations::dsl::*;
-
+            use crate::schema::journals;
 
             author.eq($user)
-                .or(visibility.eq(Visibility::Public))
+                .or(entries::visibility.eq(Visibility::Public).and(journals::visibility.eq(Visibility::Public)))
                 .or(
-                    visibility.eq(Visibility::Friends)
+                    entries::visibility.ne(Visibility::Private).and(journals::visibility.eq(Visibility::Friends))
                         .and(
                             user_from.eq(author).and(user_to.eq($user))
                                 .or(user_to.eq(author).and(user_from.eq($user)))
@@ -103,7 +110,7 @@ pub async fn create(form: web::Json<CreateRequest>, ident: Identity, pool: web::
     let CreateRequest {
         content,
         significance,
-        tags,
+        mut tags,
         journal,
         visibility
     } = form.into_inner();
@@ -115,52 +122,40 @@ pub async fn create(form: web::Json<CreateRequest>, ident: Identity, pool: web::
 
     let db = pool.get()?;
 
-    let journal_exists: bool = {
-        use crate::schema::journals::dsl::*;
-
-        let count: i64 = journals
-            .find(jid)
-            .filter(owner.eq(claims.userid))
-            .count()
-            .get_result(&db)
-            .map_err(|_| Error::InternalServerError)?;
-
-        count > 0
+    let new_entry = NewEntry {
+        author: claims.userid,
+        journal: jid,
+        visibility,
+        content,
+        significance
     };
 
-    if journal_exists {
-        let new_entry = NewEntry {
-            author: claims.userid,
-            journal: jid,
-            visibility,
-            content,
-            significance
-        };
+    let new: Entry = {
+        use self::entries::dsl::*;
+        diesel::insert_into(entries)
+            .values(&new_entry)
+            .returning((id, author, journal, visibility, created, modified, modifiedc, content, significance))
+            .get_result(&db)?
+    };
 
-        let new: Entry = {
-            use self::entries::dsl::*;
-            diesel::insert_into(entries)
-                .values(&new_entry)
-                .returning((id, author, journal, visibility, created, modified, modifiedc, content, significance))
-                .get_result(&db)?
-        };
+    if !tags.is_empty() {
+        use self::entry_tags::dsl::*;
 
-        if !tags.is_empty() {
-            use self::entry_tags::dsl::*;
+        let insert: Vec<_> = tags.iter().map(|t| (entry.eq(new.id), tag.eq(t))).collect();
 
-            let insert: Vec<_> = tags.iter().map(|t| (entry.eq(new.id), tag.eq(t))).collect();
+        let result = diesel::insert_into(entry_tags)
+            .values(&insert)
+            .execute(&db);
 
-            diesel::insert_into(entry_tags)
-                .values(&insert)
-                .execute(&db)?;
+        if let Err(_) = result {
+            tags.clear();
+            // TODO: Maybe not silently erase tags?
         }
-
-        let response = EntryResponse::new(new, tags, claims.userid);
-
-        Ok(HttpResponse::Created().body(serde_json::to_string(&response).unwrap()))
-    } else {
-        Err(Error::BadRequest(String::from("Journal does not exist")))
     }
+
+    let response = EntryResponse::new(new, tags, claims.userid);
+
+    Ok(HttpResponse::Created().body(serde_json::to_string(&response).unwrap()))
 
 }
 
@@ -178,21 +173,19 @@ pub async fn in_journal(args: web::Path<(i64, SearchMethod)>, query: web::Query<
     let db = pool.get()?;
 
     let found: Vec<Entry> = {
-        use self::entries::dsl::*;
+        use self::entries::id;
 
         match method {
             SearchMethod::Before => {
                 entries_and_friends!(claims.userid)
                     .filter(id.lt(searchid).and(visible_post!(claims.userid)))
                     .order(id.desc())
-                    .select((id, author, journal, visibility, created, modified, modifiedc, content, significance))
                     .limit(limit)
                     .get_results(&db)?
             },
             SearchMethod::After => {
                 entries_and_friends!(claims.userid)
                     .filter(id.gt(searchid).and(visible_post!(claims.userid)))
-                    .select((id, author, journal, visibility, created, modified, modifiedc, content, significance))
                     .order(id.asc())
                     .limit(limit)
                     .get_results(&db)?
@@ -214,11 +207,10 @@ pub async fn find(entryid: web::Path<i64>, ident: Identity, pool: web::Data<Pool
     let db = pool.get()?;
 
     let found: Entry = {
-        use self::entries::dsl::*;
+        use self::entries::id;
 
         entries_and_friends!(claims.userid)
             .filter(id.eq(entryid).and(visible_post!(claims.userid)))
-            .select((id, author, journal, visibility, created, modified, modifiedc, content, significance))
             .get_result(&db)?
     };
 

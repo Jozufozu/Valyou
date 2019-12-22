@@ -2,10 +2,9 @@ use actix_web::{ResponseError, HttpResponse};
 use diesel::result::{Error as DBError, DatabaseErrorKind};
 use std::fmt::Display;
 use std::error::Error as STDError;
+use serde::export::TryFrom;
 
 pub type ValyouResult<T> = std::result::Result<T, Error>;
-
-pub type RequestResult = std::result::Result<HttpResponse, HttpResponse>;
 
 #[derive(Debug, Display)]
 pub enum Error {
@@ -22,9 +21,12 @@ pub enum Error {
     NotFound,
 }
 
-impl STDError for Error {
-
+#[derive(Debug, Display)]
+pub enum ConstraintViolation {
+    AuthorOwnsJournal
 }
+
+impl STDError for Error {}
 
 // impl ResponseError trait allows to convert our errors into http responses with appropriate data
 impl ResponseError for Error {
@@ -42,15 +44,23 @@ impl ResponseError for Error {
 
 impl From<DBError> for Error {
     fn from(error: DBError) -> Error {
-        // Right now we just care about UniqueViolation from diesel
-        // But this would be helpful to easily map errors as our app grows
         match error {
             DBError::DatabaseError(kind, info) => {
-                if let DatabaseErrorKind::UniqueViolation = kind {
-                    let message = info.details().unwrap_or_else(|| info.message()).to_string();
-                    return Error::BadRequest(message);
+                match kind {
+                    DatabaseErrorKind::UniqueViolation | DatabaseErrorKind::ForeignKeyViolation => {
+                        let message = info.details().unwrap_or_else(|| info.message()).to_string();
+                        Error::BadRequest(message)
+                    },
+                    _ => {
+                        if let Some(name) = info.constraint_name() {
+                            if let Ok(cv) = ConstraintViolation::try_from(name) {
+                                return Error::from(cv);
+                            }
+                        }
+
+                        Error::InternalServerError
+                    }
                 }
-                Error::InternalServerError
             },
             DBError::NotFound => Error::NotFound,
             _ => Error::InternalServerError,
@@ -60,4 +70,23 @@ impl From<DBError> for Error {
 
 impl From<r2d2::Error> for Error {
     fn from(_: r2d2::Error) -> Self { Error::InternalServerError }
+}
+
+impl std::convert::TryFrom<&str> for ConstraintViolation {
+    type Error = ();
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "author_owns_journal" => Ok(ConstraintViolation::AuthorOwnsJournal),
+            _ => Err(())
+        }
+    }
+}
+
+impl From<ConstraintViolation> for Error {
+    fn from(cv: ConstraintViolation) -> Self {
+        match cv {
+            ConstraintViolation::AuthorOwnsJournal => Error::BadRequest(String::from("User does not own journal"))
+        }
+    }
 }

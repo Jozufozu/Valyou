@@ -2,7 +2,7 @@ use actix_identity::Identity;
 use actix_web::{Responder, HttpResponse, web};
 use crate::Pool;
 use crate::models::visibility::Visibility;
-use crate::errors::{RequestResult, Error, ValyouResult};
+use crate::errors::{Error, ValyouResult};
 use crate::routes::account::get_identity;
 use crate::schema::journals;
 use diesel::RunQueryDsl;
@@ -35,7 +35,7 @@ pub async fn create(create: web::Json<CreateRequest>, ident: Identity, pool: web
         visibility: visibility.unwrap_or(Visibility::Private)
     };
 
-    let db = pool.get().map_err(|_| Error::InternalServerError)?;
+    let db = pool.get()?;
 
     {
         use self::journals::dsl::*;

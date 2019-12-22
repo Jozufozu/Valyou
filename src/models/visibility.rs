@@ -12,12 +12,10 @@ pub mod db {
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, FromSqlRow, AsExpression)]
 #[sql_type = "db::Visibility"]
+#[serde(rename_all = "lowercase")]
 pub enum Visibility {
-    #[serde(rename = "public")]
     Public,
-    #[serde(rename = "private")]
     Private,
-    #[serde(rename = "friends")]
     Friends
 }
 

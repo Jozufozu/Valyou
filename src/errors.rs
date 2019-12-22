@@ -1,6 +1,5 @@
 use actix_web::{ResponseError, HttpResponse};
 use diesel::result::{Error as DBError, DatabaseErrorKind};
-use std::fmt::Display;
 use std::error::Error as STDError;
 use serde::export::TryFrom;
 
@@ -37,14 +36,14 @@ impl ResponseError for Error {
             Error::InternalServerError => {
                 HttpResponse::InternalServerError().json("Internal Server Error, Please try later")
             }
-            Error::BadRequest(ref message) => HttpResponse::BadRequest().json(message),
+            Error::BadRequest(message) => HttpResponse::BadRequest().json(message),
             Error::Unauthorized => HttpResponse::Unauthorized().json("Unauthorized"),
             Error::NotFound => HttpResponse::NotFound().finish()
         }
     }
 }
 
-impl From<DBError> for Error {
+impl<'a> From<DBError> for Error {
     fn from(error: DBError) -> Error {
         match error {
             DBError::DatabaseError(kind, info) => {
@@ -88,7 +87,7 @@ impl std::convert::TryFrom<&str> for ConstraintViolation {
 impl From<ConstraintViolation> for Error {
     fn from(cv: ConstraintViolation) -> Self {
         match cv {
-            ConstraintViolation::AuthorOwnsJournal => Error::BadRequest(String::from("User does not own journal"))
+            ConstraintViolation::AuthorOwnsJournal => Error::BadRequest("User does not own journal".into())
         }
     }
 }

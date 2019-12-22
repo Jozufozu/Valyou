@@ -1,4 +1,4 @@
-use actix_web::{web, ResponseError, HttpResponse, Responder};
+use actix_web::{web, HttpResponse, Responder};
 use diesel::prelude::*;
 use diesel::r2d2::{self, ConnectionManager};
 use dotenv;
@@ -10,7 +10,6 @@ use crate::errors::Error;
 use jsonwebtoken::{Validation, Algorithm};
 use std::time::{UNIX_EPOCH, SystemTime};
 use self::r2d2::PooledConnection;
-use crate::models::visibility::Visibility;
 use crate::models::visibility::Visibility::Private;
 
 static SECRET: &'static str = dotenv!("JWT_SECRET");
@@ -85,10 +84,10 @@ pub async fn register(data: web::Json<CreateRequest>, pool: web::Data<Pool>) -> 
                 .map(|_| HttpResponse::Ok().finish())
         },
         (Ok(n), _) if n > 0 => {
-            Err(Error::BadRequest(String::from("Email already in use")))
+            Err(Error::BadRequest("Email already in use".into()))
         },
         (_, Ok(n)) if n > 0 => {
-            Err(Error::BadRequest(String::from("Username already in use")))
+            Err(Error::BadRequest("Username already in use".into()))
         },
         _ => {
             Err(Error::InternalServerError)

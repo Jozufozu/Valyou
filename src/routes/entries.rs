@@ -1,7 +1,7 @@
 use actix_identity::Identity;
-use actix_web::{Responder, HttpResponse, web};
+use actix_web::{HttpResponse, web};
 use crate::models::visibility::Visibility;
-use crate::errors::{Error, ValyouResult, RequestResult};
+use crate::errors::{Error, RequestResult};
 use crate::Pool;
 use diesel::{prelude::*, QueryDsl};
 use crate::schema::{entries, entry_tags};
@@ -67,13 +67,14 @@ pub struct EditRequest {
     pub visibility: Option<Visibility>
 }
 
-#[derive(Debug, AsChangeSet)]
+#[derive(Debug, AsChangeset)]
+#[table_name = "entries"]
 pub struct EditEntry {
     pub content: Option<String>,
     pub significance: Option<f64>,
     pub visibility: Option<Visibility>,
     pub modified: chrono::NaiveDateTime,
-    pub modifiedc: Option<chrono::NaieveDateTime>
+    pub modifiedc: Option<chrono::NaiveDateTime>
 }
 
 #[derive(Debug, Insertable)]
@@ -185,31 +186,31 @@ pub async fn edit(entryid: web::Path<i64>, request: web::Json<EditRequest>, iden
 }
 
 pub async fn in_journal(args: web::Path<(i64, SearchMethod)>, query: web::Query<SearchQuery>, ident: Identity, pool: web::Data<Pool>) -> RequestResult {
-    let (journal, method) = args.into_inner();
+    let (journalid, method) = args.into_inner();
     let SearchQuery { id, limit } = query.into_inner();
     let searchid = id;
 
     let claims = get_identity(ident)?;
 
-    let db = pool.get()?;
-
     let found: Vec<Entry> = {
-        use self::entries::id;
+        use self::entries::{id, journal};
+
+        let predicate = visible_post!(claims.userid).and(journal.eq(journalid));
 
         match method {
             SearchMethod::Before => {
                 entries_and_friends!(claims.userid)
-                    .filter(id.lt(searchid).and(visible_post!(claims.userid)))
+                    .filter(id.lt(searchid).and(predicate))
                     .order(id.desc())
                     .limit(limit)
-                    .get_results(&db)?
+                    .get_results(&pool.get()?)?
             },
             SearchMethod::After => {
                 entries_and_friends!(claims.userid)
-                    .filter(id.gt(searchid).and(visible_post!(claims.userid)))
+                    .filter(id.gt(searchid).and(predicate))
                     .order(id.asc())
                     .limit(limit)
-                    .get_results(&db)?
+                    .get_results(&pool.get()?)?
             },
             _ => todo!("Have to figure out how to do a query like this.")
         }

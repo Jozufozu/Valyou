@@ -1,4 +1,4 @@
-use diesel::{serialize, deserialize, Queryable};
+use diesel::Queryable;
 
 use crate::models::visibility::Visibility;
 
@@ -54,12 +54,10 @@ pub struct Profile {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum SearchMethod {
-    #[serde(rename = "around")]
     Around,
-    #[serde(rename = "before")]
     Before,
-    #[serde(rename = "after")]
     After
 }
 
@@ -70,5 +68,6 @@ pub struct SearchQuery {
     pub limit: i64
 }
 
-fn default_limit() -> i64 { 20 }
+#[inline(always)]
+const fn default_limit() -> i64 { 20 }
 

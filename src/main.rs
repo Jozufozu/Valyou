@@ -56,6 +56,7 @@ async fn main() -> io::Result<()> {
                         .route("", web::get().to(relationships::list_for))
                         .route("", web::post().to(relationships::send_request))
                         .route("", web::delete().to(relationships::remove_friend))
+                        .route("/request/{method}", web::post().to(relationships::respond_request))
                     )
                     .route("/profile", web::get().to(profiles::view))
                 )

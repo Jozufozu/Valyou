@@ -8,7 +8,7 @@ use std::io::Write;
 #[postgres(type_name = "status")]
 pub struct Status;
 
-#[derive(Debug, PartialEq, FromSqlRow, AsExpression)]
+#[derive(Debug, Clone, PartialEq, FromSqlRow, AsExpression)]
 #[sql_type = "Status"]
 pub enum RelationStatus {
     PendingFirstSecond,

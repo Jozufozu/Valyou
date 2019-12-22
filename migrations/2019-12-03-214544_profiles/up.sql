@@ -1,7 +1,7 @@
 CREATE TYPE visibility AS ENUM ('public', 'private', 'friends');
 
 CREATE TABLE profiles (
-    id          BIGINT  PRIMARY KEY REFERENCES accounts,
+    id          BIGINT  PRIMARY KEY REFERENCES accounts ON UPDATE CASCADE ON DELETE CASCADE,
     visibility  visibility  NOT NULL,
     summary     VARCHAR,
     bio         VARCHAR,
@@ -9,7 +9,7 @@ CREATE TABLE profiles (
 );
 
 CREATE TABLE usernames (
-    id      BIGINT  PRIMARY KEY REFERENCES profiles,
+    id      BIGINT  PRIMARY KEY REFERENCES profiles ON UPDATE CASCADE ON DELETE CASCADE,
     handle  VARCHAR NOT NULL    UNIQUE,
     modified    timestamp
 );

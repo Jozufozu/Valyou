@@ -6,6 +6,8 @@ use serde::export::TryFrom;
 
 pub type ValyouResult<T> = std::result::Result<T, Error>;
 
+pub type RequestResult = ValyouResult<HttpResponse>;
+
 #[derive(Debug, Display)]
 pub enum Error {
     #[display(fmt = "Internal Server Error")]

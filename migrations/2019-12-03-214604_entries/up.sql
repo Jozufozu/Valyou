@@ -1,8 +1,8 @@
 
 CREATE TABLE entries (
     id              BIGINT      PRIMARY KEY default id_generator(),
-    author          BIGINT      NOT NULL    REFERENCES profiles,
-    journal         BIGINT      NOT NULL    REFERENCES journals,
+    author          BIGINT      NOT NULL    REFERENCES profiles ON UPDATE CASCADE ON DELETE CASCADE,
+    journal         BIGINT      NOT NULL    REFERENCES journals ON UPDATE CASCADE ON DELETE CASCADE,
     visibility      visibility  NOT NULL,
     created         timestamp   NOT NULL    default now(),
     modified        timestamp,
@@ -13,7 +13,7 @@ CREATE TABLE entries (
 );
 
 CREATE TABLE entry_tags (
-    id      BIGINT  PRIMARY KEY default id_generator(),
-    entry   BIGINT  REFERENCES entries,
-    tag     VARCHAR NOT NULL
+    entry   BIGINT  REFERENCES entries ON UPDATE CASCADE ON DELETE CASCADE,
+    tag     VARCHAR NOT NULL,
+    CONSTRAINT entry_tags_pkey PRIMARY KEY (entry, tag)
 );

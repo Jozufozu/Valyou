@@ -1,7 +1,7 @@
 use actix_identity::Identity;
 use actix_web::{Responder, HttpResponse, web};
 use crate::models::visibility::Visibility;
-use crate::errors::{Error, ValyouResult};
+use crate::errors::{Error, ValyouResult, RequestResult};
 use crate::Pool;
 use diesel::{prelude::*, QueryDsl};
 use crate::schema::{entries, entry_tags};
@@ -60,6 +60,22 @@ pub struct CreateRequest {
     pub visibility: Visibility
 }
 
+#[derive(Debug, Deserialize)]
+pub struct EditRequest {
+    pub content: Option<String>,
+    pub significance: Option<f64>,
+    pub visibility: Option<Visibility>
+}
+
+#[derive(Debug, AsChangeSet)]
+pub struct EditEntry {
+    pub content: Option<String>,
+    pub significance: Option<f64>,
+    pub visibility: Option<Visibility>,
+    pub modified: chrono::NaiveDateTime,
+    pub modifiedc: Option<chrono::NaieveDateTime>
+}
+
 #[derive(Debug, Insertable)]
 #[table_name = "entries"]
 pub struct NewEntry {
@@ -106,7 +122,7 @@ impl EntryResponse {
     }
 }
 
-pub async fn create(form: web::Json<CreateRequest>, ident: Identity, pool: web::Data<Pool>) -> ValyouResult<HttpResponse> {
+pub async fn create(form: web::Json<CreateRequest>, ident: Identity, pool: web::Data<Pool>) -> RequestResult {
     let CreateRequest {
         content,
         significance,
@@ -159,11 +175,16 @@ pub async fn create(form: web::Json<CreateRequest>, ident: Identity, pool: web::
 
 }
 
-pub async fn edit(ident: Identity) -> impl Responder {
-    HttpResponse::MethodNotAllowed().finish()
+pub async fn edit(entryid: web::Path<i64>, request: web::Json<EditRequest>, ident: Identity, pool: web::Data<Pool>) -> RequestResult {
+    let entryid = entryid.into_inner();
+    let EditRequest { content, significance, visibility } = request.into_inner();
+
+    let db = pool.get()?;
+
+    Err(Error::NotFound)
 }
 
-pub async fn in_journal(args: web::Path<(i64, SearchMethod)>, query: web::Query<SearchQuery>, ident: Identity, pool: web::Data<Pool>) -> ValyouResult<HttpResponse> {
+pub async fn in_journal(args: web::Path<(i64, SearchMethod)>, query: web::Query<SearchQuery>, ident: Identity, pool: web::Data<Pool>) -> RequestResult {
     let (journal, method) = args.into_inner();
     let SearchQuery { id, limit } = query.into_inner();
     let searchid = id;
@@ -199,7 +220,7 @@ pub async fn in_journal(args: web::Path<(i64, SearchMethod)>, query: web::Query<
     Ok(HttpResponse::Ok().body(serde_json::to_string(&map).unwrap()))
 }
 
-pub async fn find(entryid: web::Path<i64>, ident: Identity, pool: web::Data<Pool>) -> ValyouResult<HttpResponse> {
+pub async fn find(entryid: web::Path<i64>, ident: Identity, pool: web::Data<Pool>) -> RequestResult {
     let entryid = entryid.into_inner();
 
     let claims = get_identity(ident)?;

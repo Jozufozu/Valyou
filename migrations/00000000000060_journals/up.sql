@@ -6,5 +6,6 @@ CREATE TABLE journals (
     created     timestamp   NOT NULL    default now(),
     modified    timestamp,
     description VARCHAR,
-    visibility  visibility  NOT NULL
+    visibility  visibility  NOT NULL,
+    color       INT         NOT NULL    default 0
 );

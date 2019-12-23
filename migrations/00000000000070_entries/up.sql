@@ -3,7 +3,6 @@ CREATE TABLE entries (
     id              BIGINT      PRIMARY KEY default id_generator(),
     author          BIGINT      NOT NULL    REFERENCES profiles ON UPDATE CASCADE ON DELETE CASCADE,
     journal         BIGINT      NOT NULL    REFERENCES journals ON UPDATE CASCADE ON DELETE CASCADE,
-    visibility      visibility  NOT NULL,
     created         timestamp   NOT NULL    default now(),
     modified        timestamp,
     modifiedc       timestamp,

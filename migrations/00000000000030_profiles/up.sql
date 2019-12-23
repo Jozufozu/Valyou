@@ -9,10 +9,10 @@ CREATE TABLE profiles (
 );
 
 CREATE TABLE usernames (
-    id          BIGINT      PRIMARY KEY REFERENCES profiles ON UPDATE CASCADE ON DELETE CASCADE,
-    handle      VARCHAR     NOT NULL,
-    numbers     SMALLINT    NOT NULL    CHECK ( numbers < 10000 and numbers > 0 ),
-    modified    timestamp,
+    id              BIGINT      PRIMARY KEY REFERENCES profiles ON UPDATE CASCADE ON DELETE CASCADE,
+    username        VARCHAR     NOT NULL,
+    discriminator   SMALLINT    NOT NULL    CHECK ( discriminator < 10000 and discriminator > 0 ),
+    modified        timestamp,
 
-    UNIQUE (handle, numbers)
+    UNIQUE (username, discriminator)
 );

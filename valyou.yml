@@ -443,7 +443,7 @@ paths:
         '403':
           description: Blocked by user
   /user/{userid}/block:
-    get:
+    post:
       tags:
         - Friends
       summary: Block a user
@@ -462,7 +462,7 @@ paths:
           description: Bad request
         '401':
           description: Login required
-  /user/self/friends/request/{method}:
+  /user/self/friends/request:
     get:
       tags:
         - Friends
@@ -480,11 +480,11 @@ paths:
           description: Bad request
         '401':
           description: Login required
-  /user/{userid}/friends/request/{action}:
-    get:
+  /user/{userid}/friends/request:
+    post:
       tags:
         - Friends
-      summary: Accept or deny a friend request
+      summary: Accept a friend request
       description: Only the recipient can accept a friend request, but either can deny
       parameters:
         - name: userid
@@ -492,14 +492,28 @@ paths:
           required: true
           schema:
             $ref: "#/components/schemas/Snowflake"
-        - name: action
+      security:
+        - LoggedIn: []
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad request
+        '401':
+          description: Login required
+        '403':
+          description: Blocked by user
+    delete:
+      tags:
+        - Friends
+      summary: Deny a friend request
+      description: Only the recipient can accept a friend request, but either can deny
+      parameters:
+        - name: userid
           in: path
           required: true
           schema:
-            type: string
-            enum:
-              - accept
-              - deny
+            $ref: "#/components/schemas/Snowflake"
       security:
         - LoggedIn: []
       responses:

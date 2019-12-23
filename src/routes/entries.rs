@@ -20,7 +20,7 @@ macro_rules! entries_and_friends {
                 .select(
                 {
                     use self::entries::dsl::*;
-                    (id, author, journal, visibility, created, modified, modifiedc, content, significance)
+                    (id, author, journal, created, modified, modifiedc, content, significance)
                 })
                 .left_join(relations::table.on(
                     relations::user_from.eq(entries::author).and(relations::user_to.eq($user))
@@ -39,9 +39,9 @@ macro_rules! visible_post {
             use crate::schema::journals;
 
             author.eq($user)
-                .or(entries::visibility.eq(Visibility::Public).and(journals::visibility.eq(Visibility::Public)))
+                .or(journals::visibility.eq(Visibility::Public))
                 .or(
-                    entries::visibility.ne(Visibility::Private).and(journals::visibility.eq(Visibility::Friends))
+                    journals::visibility.eq(Visibility::Friends)
                         .and(
                             user_from.eq(author).and(user_to.eq($user))
                                 .or(user_to.eq(author).and(user_from.eq($user)))
@@ -57,22 +57,19 @@ pub struct CreateRequest {
     pub significance: Option<f64>,
     pub tags: Vec<String>,
     pub journal: String,
-    pub visibility: Visibility
 }
 
 #[derive(Debug, Deserialize)]
 pub struct EditRequest {
     pub content: Option<String>,
     pub significance: Option<f64>,
-    pub visibility: Option<Visibility>
 }
 
 #[derive(Debug, AsChangeset)]
 #[table_name = "entries"]
 pub struct EditEntry {
     pub content: Option<String>,
-    pub significance: Option<f64>,
-    pub visibility: Option<Visibility>
+    pub significance: Option<f64>
 }
 
 #[derive(Debug, Insertable)]
@@ -80,7 +77,6 @@ pub struct EditEntry {
 pub struct NewEntry {
     pub author: i64,
     pub journal: i64,
-    pub visibility: Visibility,
     pub content: String,
     pub significance: Option<f64>
 }
@@ -91,7 +87,6 @@ pub struct EntryResponse {
     pub author: i64,
     pub journal: i64,
     pub creator: bool,
-    pub visibility: Visibility,
     pub created: chrono::NaiveDateTime,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub modified: Option<chrono::NaiveDateTime>,
@@ -110,7 +105,6 @@ impl EntryResponse {
             author: entry.author,
             journal: entry.journal,
             creator: entry.author == current_user,
-            visibility: entry.visibility,
             created: entry.created,
             modified: entry.modified,
             modifiedc: entry.modifiedc,
@@ -126,8 +120,7 @@ pub async fn create(form: web::Json<CreateRequest>, ident: Identity, pool: web::
         content,
         significance,
         mut tags,
-        journal,
-        visibility
+        journal
     } = form.into_inner();
 
     let jid = journal.parse::<i64>()
@@ -140,7 +133,6 @@ pub async fn create(form: web::Json<CreateRequest>, ident: Identity, pool: web::
     let new_entry = NewEntry {
         author: claims.userid,
         journal: jid,
-        visibility,
         content,
         significance
     };
@@ -149,7 +141,7 @@ pub async fn create(form: web::Json<CreateRequest>, ident: Identity, pool: web::
         use self::entries::dsl::*;
         diesel::insert_into(entries)
             .values(&new_entry)
-            .returning((id, author, journal, visibility, created, modified, modifiedc, content, significance))
+            .returning((id, author, journal, created, modified, modifiedc, content, significance))
             .get_result(&db)?
     };
 
@@ -176,7 +168,7 @@ pub async fn create(form: web::Json<CreateRequest>, ident: Identity, pool: web::
 
 pub async fn edit(entryid: web::Path<i64>, request: web::Json<EditRequest>, ident: Identity, pool: web::Data<Pool>) -> RequestResult {
     let entryid = entryid.into_inner();
-    let EditRequest { content, significance, visibility } = request.into_inner();
+    let EditRequest { content, significance } = request.into_inner();
 
     let db = pool.get()?;
 

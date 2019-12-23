@@ -20,7 +20,6 @@ table! {
         id -> Int8,
         author -> Int8,
         journal -> Int8,
-        visibility -> Visibility,
         created -> Timestamp,
         modified -> Nullable<Timestamp>,
         modifiedc -> Nullable<Timestamp>,
@@ -52,6 +51,7 @@ table! {
         modified -> Nullable<Timestamp>,
         description -> Nullable<Varchar>,
         visibility -> Visibility,
+        color -> Int4,
     }
 }
 
@@ -86,8 +86,8 @@ table! {
 
     usernames (id) {
         id -> Int8,
-        handle -> Varchar,
-        numbers -> Int2,
+        username -> Varchar,
+        discriminator -> Int2,
         modified -> Nullable<Timestamp>,
     }
 }

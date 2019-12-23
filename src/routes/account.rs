@@ -73,15 +73,16 @@ pub async fn show(ident: Identity) -> RequestResult {
 }
 
 pub async fn register(data: web::Json<CreateRequest>, pool: web::Data<Pool>) -> RequestResult {
-    use crate::schema::accounts::dsl::*;
+    use crate::schemas::views::new_account::dsl::*;
 
     let hashed_password = bcrypt::hash(&data.password, 9)
         .map_err(|_| Error::InternalServerError)?;
 
-    let userid: i64 = diesel::insert_into(accounts)
-        .values((email.eq(&data.email), hash.eq(&hashed_password)))
-        .returning(id)
-        .get_result(&db)?;
+    diesel::insert_into(new_account)
+        .values(&(email.eq(&data.email), hash.eq(&hashed_password), username.eq(&data.username)))
+        .execute(&pool.get()?)?;
+
+    Ok(HttpResponse::NoContent().finish())
 }
 
 pub async fn login(data: web::Json<AuthRequest>, ident: Identity, pool: web::Data<Pool>) -> RequestResult {

@@ -1,15 +1,17 @@
-CREATE FUNCTION gen_numbers(user_handle VARCHAR) RETURNS SMALLINT AS $$
+CREATE FUNCTION gen_discriminator(handle VARCHAR) RETURNS SMALLINT AS $$
 DECLARE
     num smallint;
 BEGIN
-    if (select count(1) from usernames where handle=user_handle)=9999 then
+    if (select count(1) from usernames where usernames.username=handle)=9999 then
         raise exception 'handle_not_available';
     end if;
 
-    loop
-        select floor(random() * 9999 + 1)::smallint into num;
-        exit when (select count(1) from usernames where handle=user_handle and numbers=num) = 0;
-    end loop;
+    select tag from generate_series(1, 9999) as tag
+    left join usernames on usernames.username=handle and usernames.discriminator=tag
+    where usernames.username isnull
+    order by random()
+    limit 1
+    into num;
 
     return num;
 END;
@@ -20,11 +22,11 @@ DECLARE
     num smallint;
     userid bigint;
 BEGIN
-    select gen_numbers(new.username) into num;
+    select gen_discriminator(new.username) into num;
 
     insert into accounts (email, hash) values (new.email, new.hash) returning (id) into userid;
     insert into profiles (id) values (userid);
-    insert into usernames (id, handle, numbers) values (userid, new.username, num);
+    insert into usernames (id, username, discriminator) values (userid, new.username, num);
 
     return new;
 END;

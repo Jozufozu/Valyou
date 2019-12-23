@@ -105,7 +105,7 @@ pub async fn view_own_friends(ident: Identity, pool: web::Data<Pool>) -> Request
     let userid = get_identity(&ident)?.userid;
 
     let friends: Vec<Friend> = diesel::sql_query(format!(r#"
-SELECT friend_table.friend AS userid, usernames.handle, profiles.summary, profiles.bio, friend_table.since
+SELECT friend_table.friend AS userid, usernames.username, usernames.discriminator, profiles.summary, profiles.bio, friend_table.since
 FROM (
     SELECT * FROM (
         SELECT user_to AS friend, status, since
@@ -130,7 +130,7 @@ pub async fn show_requests(ident: Identity, pool: web::Data<Pool>) -> RequestRes
     let userid = get_identity(&ident)?.userid;
 
     let friends: Vec<Friend> = diesel::sql_query(format!(r#"
-SELECT requests.userid, usernames.handle, profiles.summary, profiles.bio, requests.since
+SELECT requests.userid, usernames.username, usernames.discriminator, profiles.summary, profiles.bio, requests.since
 FROM (
     SELECT user_to AS userid, since
     FROM relations

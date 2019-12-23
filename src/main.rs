@@ -16,6 +16,7 @@ use env_logger;
 
 mod models;
 mod schema;
+mod schemas;
 mod errors;
 mod routes;
 

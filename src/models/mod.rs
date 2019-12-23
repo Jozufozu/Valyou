@@ -23,7 +23,6 @@ pub struct Entry {
     pub id: i64,
     pub author: i64,
     pub journal: i64,
-    pub visibility: Visibility,
     pub created: chrono::NaiveDateTime,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub modified: Option<chrono::NaiveDateTime>,
@@ -43,7 +42,8 @@ pub struct Journal {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub modified: Option<chrono::NaiveDateTime>,
     pub description: Option<String>,
-    pub visibility: Visibility
+    pub visibility: Visibility,
+    pub color: i32
 }
 
 #[derive(Debug, Serialize, Deserialize, Queryable)]
@@ -59,7 +59,10 @@ pub struct Friend {
     pub userid: i64,
 
     #[sql_type = "Varchar"]
-    pub handle: String,
+    pub username: String,
+
+    #[sql_type = "Int2"]
+    pub discriminator: i16,
 
     #[sql_type = "Nullable<Varchar>"]
     #[serde(skip_serializing_if = "Option::is_none")]

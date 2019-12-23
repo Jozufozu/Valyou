@@ -12,6 +12,8 @@ use diesel::r2d2::{self, ConnectionManager};
 use dotenv;
 use actix_identity::{CookieIdentityPolicy, IdentityService};
 use std::io;
+use env_logger;
+
 mod models;
 mod schema;
 mod errors;
@@ -22,6 +24,8 @@ type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
 #[actix_rt::main]
 async fn main() -> io::Result<()> {
     dotenv::dotenv().ok();
+    std::env::set_var("RUST_LOG", "actix_web=info");
+    env_logger::init();
 
     let manager = ConnectionManager::<PgConnection>::new(dotenv!("DATABASE_URL"));
     let pool: Pool = r2d2::Pool::builder()
@@ -40,31 +44,31 @@ async fn main() -> io::Result<()> {
             .wrap(middleware::Logger::default())
             .service(
                 web::scope("/account")
+                    .route("", web::get().to(account::show))
+                    .route("", web::post().to(account::register))
+                    .route("", web::patch().to(account::edit))
                     .service(web::scope("/auth")
                         .route("", web::post().to(account::login))
                         .route("", web::delete().to(account::logout))
                     )
-                    .route("", web::get().to(account::show))
-                    .route("", web::post().to(account::register))
-                    .route("", web::patch().to(account::edit))
             )
             .service(web::scope("/user")
                 .route("", web::get().to(profiles::search))
                 .route("", web::patch().to(profiles::edit))
+                .service(web::scope("/self/friends")
+                    .route("", web::get().to(relationships::view_own_friends))
+                    .route("/request", web::get().to(relationships::show_requests))
+                )
                 .service(web::scope("/{userid}")
+                    .route("/profile", web::get().to(profiles::view))
                     .service(web::scope("/friends")
-                        .route("", web::get().to(relationships::list_for))
+                        //.route("", web::get().to(relationships::list_for))
                         .route("", web::post().to(relationships::send_request))
                         .route("", web::delete().to(relationships::remove_friend))
-                        .route("/request/{method}", web::post().to(relationships::respond_request))
-                    )
-                    .route("/profile", web::get().to(profiles::view))
-                )
-                .service(web::scope("/self")
-                    .service(
-                        web::scope("/friends")
-                            .service(web::resource("/request/{method}").to(relationships::show_requests))
-                            .route("", web::get().to(profiles::view_self))
+                        .service(web::scope("/request")
+                            .route("", web::post().to(relationships::accept_request))
+                            .route("", web::delete().to(relationships::deny_request))
+                        )
                     )
                 )
             )

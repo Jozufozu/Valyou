@@ -87,6 +87,7 @@ table! {
     usernames (id) {
         id -> Int8,
         handle -> Varchar,
+        numbers -> Int2,
         modified -> Nullable<Timestamp>,
     }
 }

@@ -25,7 +25,7 @@ pub struct NewJournal {
 }
 
 pub async fn create(create: web::Json<CreateRequest>, ident: Identity, pool: web::Data<Pool>) -> ValyouResult<HttpResponse> {
-    let identity = get_identity(ident)?;
+    let identity = get_identity(&ident)?;
     let CreateRequest { name, description, visibility } = create.into_inner();
 
     let new_journal = NewJournal {
@@ -44,7 +44,7 @@ pub async fn create(create: web::Json<CreateRequest>, ident: Identity, pool: web
             .values(&new_journal)
             .get_result(&db)
             .map_err(|e| Error::from(e))
-            .map(|inserted: Journal| HttpResponse::Created().body(serde_json::to_string(&inserted).unwrap()))
+            .map(|inserted: Journal| HttpResponse::Created().json(serde_json::to_string(&inserted).unwrap()))
     }
 }
 

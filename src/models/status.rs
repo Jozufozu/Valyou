@@ -4,7 +4,7 @@ use diesel::serialize::{ToSql, IsNull, Output};
 use diesel::pg::Pg;
 use std::io::Write;
 
-#[derive(SqlType)]
+#[derive(SqlType, QueryId)]
 #[postgres(type_name = "status")]
 pub struct Status;
 

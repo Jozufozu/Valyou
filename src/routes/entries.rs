@@ -72,9 +72,7 @@ pub struct EditRequest {
 pub struct EditEntry {
     pub content: Option<String>,
     pub significance: Option<f64>,
-    pub visibility: Option<Visibility>,
-    pub modified: chrono::NaiveDateTime,
-    pub modifiedc: Option<chrono::NaiveDateTime>
+    pub visibility: Option<Visibility>
 }
 
 #[derive(Debug, Insertable)]
@@ -135,7 +133,7 @@ pub async fn create(form: web::Json<CreateRequest>, ident: Identity, pool: web::
     let jid = journal.parse::<i64>()
         .map_err(|e| Error::BadRequest(format!("{:?}", e)))?;
 
-    let claims = get_identity(ident)?;
+    let claims = get_identity(&ident)?;
 
     let db = pool.get()?;
 
@@ -172,7 +170,7 @@ pub async fn create(form: web::Json<CreateRequest>, ident: Identity, pool: web::
 
     let response = EntryResponse::new(new, tags, claims.userid);
 
-    Ok(HttpResponse::Created().body(serde_json::to_string(&response).unwrap()))
+    Ok(HttpResponse::Created().json(serde_json::to_string(&response).unwrap()))
 
 }
 
@@ -190,7 +188,7 @@ pub async fn in_journal(args: web::Path<(i64, SearchMethod)>, query: web::Query<
     let SearchQuery { id, limit } = query.into_inner();
     let searchid = id;
 
-    let claims = get_identity(ident)?;
+    let claims = get_identity(&ident)?;
 
     let found: Vec<Entry> = {
         use self::entries::{id, journal};
@@ -218,13 +216,13 @@ pub async fn in_journal(args: web::Path<(i64, SearchMethod)>, query: web::Query<
 
     let map: Vec<EntryResponse> = found.into_iter().map(|e| EntryResponse::new(e, Vec::with_capacity(0), claims.userid)).collect() ;
 
-    Ok(HttpResponse::Ok().body(serde_json::to_string(&map).unwrap()))
+    Ok(HttpResponse::Ok().json(serde_json::to_string(&map).unwrap()))
 }
 
 pub async fn find(entryid: web::Path<i64>, ident: Identity, pool: web::Data<Pool>) -> RequestResult {
     let entryid = entryid.into_inner();
 
-    let claims = get_identity(ident)?;
+    let claims = get_identity(&ident)?;
 
     let db = pool.get()?;
 
@@ -247,5 +245,5 @@ pub async fn find(entryid: web::Path<i64>, ident: Identity, pool: web::Data<Pool
 
     let response = EntryResponse::new(found, tags, claims.userid);
 
-    Ok(HttpResponse::Ok().body(serde_json::to_string(&response).unwrap()))
+    Ok(HttpResponse::Ok().json(serde_json::to_string(&response).unwrap()))
 }

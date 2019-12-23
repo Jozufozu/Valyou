@@ -2,5 +2,5 @@
 # see diesel.rs/guides/configuring-diesel-cli
 
 [print_schema]
-file = "src/schema.rs"
+file = "src/schema/mod.rs"
 import_types = ["crate::models::{status::Status, visibility::db::Visibility}", "diesel::sql_types::*"]

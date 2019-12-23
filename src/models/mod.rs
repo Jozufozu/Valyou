@@ -1,4 +1,4 @@
-use diesel::Queryable;
+use diesel::{sql_types::*, Queryable};
 
 use crate::models::visibility::Visibility;
 
@@ -51,6 +51,26 @@ pub struct Profile {
     pub id: i64,
     pub summary: Option<String>,
     pub bio: Option<String>,
+}
+
+#[derive(Debug, Serialize, Queryable, QueryableByName)]
+pub struct Friend {
+    #[sql_type = "Int8"]
+    pub userid: i64,
+
+    #[sql_type = "Varchar"]
+    pub handle: String,
+
+    #[sql_type = "Nullable<Varchar>"]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub summary: Option<String>,
+
+    #[sql_type = "Nullable<Varchar>"]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bio: Option<String>,
+
+    #[sql_type = "Timestamp"]
+    pub since: chrono::NaiveDateTime
 }
 
 #[derive(Debug, Deserialize)]

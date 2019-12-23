@@ -5,17 +5,11 @@ use crate::errors::{RequestResult, Error};
 use crate::routes::account::get_identity;
 use crate::models::status::RelationStatus;
 use crate::Pool;
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum FrqAction {
-    Accept,
-    Deny
-}
+use crate::models::Friend;
 
 pub async fn send_request(to: web::Path<i64>, ident: Identity, pool: web::Data<Pool>) -> RequestResult {
     let friendid = to.into_inner();
-    let userid = get_identity(ident)?.userid;
+    let userid = get_identity(&ident)?.userid;
 
     if userid == friendid {
         return Err(Error::BadRequest("You're already friends with yourself".into()));
@@ -38,9 +32,9 @@ pub async fn send_request(to: web::Path<i64>, ident: Identity, pool: web::Data<P
     Ok(HttpResponse::NoContent().finish())
 }
 
-pub async fn respond_request(path: web::Path<(i64, FrqAction)>, ident: Identity, pool: web::Data<Pool>) -> RequestResult {
-    let (friendid, action) = path.into_inner();
-    let userid = get_identity(ident)?.userid;
+pub async fn accept_request(path: web::Path<i64>, ident: Identity, pool: web::Data<Pool>) -> RequestResult {
+    let friendid = path.into_inner();
+    let userid = get_identity(&ident)?.userid;
 
     if userid == friendid {
         return Err(Error::BadRequest("You're already friends with yourself".into()));
@@ -52,28 +46,46 @@ pub async fn respond_request(path: web::Path<(i64, FrqAction)>, ident: Identity,
         ((friendid, userid), RelationStatus::PendingFirstSecond)
     };
 
-    match action {
-        FrqAction::Accept => {
-            use crate::schema::relations::dsl::*;
-            diesel::update(relations)
-                .filter(user_from.eq(pair.0).and(user_to.eq(pair.0)).and(status.eq(required)))
-                .set(status.eq(RelationStatus::Friends))
-                .execute(&pool.get()?);
-        },
-        FrqAction::Deny => {
-            use crate::schema::relations::dsl::*;
-            diesel::delete(relations)
-                .filter(user_from.eq(pair.0).and(user_to.eq(pair.1)))
-                .execute(&pool.get()?);
-        }
+    let success: usize = {
+        use crate::schema::relations::dsl::*;
+        diesel::update(relations)
+            .filter(user_from.eq(pair.0).and(user_to.eq(pair.1)).and(status.eq(required)))
+            .set(status.eq(RelationStatus::Friends))
+            .execute(&pool.get()?)?
+    };
+
+    if success > 0 {
+        Ok(HttpResponse::NoContent().finish())
+    } else {
+        Err(Error::BadRequest(String::new()))
     }
+}
+
+pub async fn deny_request(to: web::Path<i64>, ident: Identity, pool: web::Data<Pool>) -> RequestResult {
+    let friendid = to.into_inner();
+    let userid = get_identity(&ident)?.userid;
+
+    if userid == friendid {
+        return Err(Error::BadRequest("You're always friends with yourself".into()));
+    }
+
+    let (pair, required) = if userid < friendid {
+        ((userid, friendid), RelationStatus::PendingSecondFirst)
+    } else {
+        ((friendid, userid), RelationStatus::PendingFirstSecond)
+    };
+
+    use crate::schema::relations::dsl::*;
+    diesel::delete(relations)
+        .filter(user_from.eq(pair.0).and(user_to.eq(pair.1)).and(status.eq(required)))
+        .execute(&pool.get()?)?;
 
     Ok(HttpResponse::NoContent().finish())
 }
 
 pub async fn remove_friend(to: web::Path<i64>, ident: Identity, pool: web::Data<Pool>) -> RequestResult {
     let friendid = to.into_inner();
-    let userid = get_identity(ident)?.userid;
+    let userid = get_identity(&ident)?.userid;
 
     if userid == friendid {
         return Err(Error::BadRequest("You're always friends with yourself".into()));
@@ -83,18 +95,59 @@ pub async fn remove_friend(to: web::Path<i64>, ident: Identity, pool: web::Data<
 
     use crate::schema::relations::dsl::*;
     diesel::delete(relations)
-        .filter(user_from.eq(pair.0).and(user_to.eq(pair.1)))
+        .filter(user_from.eq(pair.0).and(user_to.eq(pair.1)).and(status.eq(RelationStatus::Friends)))
         .execute(&pool.get()?)?;
 
     Ok(HttpResponse::NoContent().finish())
 }
 
-pub async fn list_for(ident: Identity) -> impl Responder {
-    HttpResponse::MethodNotAllowed().finish()
+pub async fn view_own_friends(ident: Identity, pool: web::Data<Pool>) -> RequestResult {
+    let userid = get_identity(&ident)?.userid;
+
+    let friends: Vec<Friend> = diesel::sql_query(format!(r#"
+SELECT friend_table.friend AS userid, usernames.handle, profiles.summary, profiles.bio, friend_table.since
+FROM (
+    SELECT * FROM (
+        SELECT user_to AS friend, status, since
+        FROM relations
+        WHERE user_from={userid}
+        UNION
+        SELECT user_from AS friend, status, since
+        FROM relations
+        WHERE user_to={userid}
+    ) AS friend_table
+    WHERE friend_table.status='friends'
+) AS friend_table
+INNER JOIN profiles ON profiles.id=friend_table.friend
+INNER JOIN usernames ON usernames.id=friend_table.friend
+ORDER BY usernames.handle
+"#, userid=userid)).get_results(&pool.get()?)?;
+
+    Ok(HttpResponse::Ok().json(serde_json::to_string(&friends).unwrap()))
 }
 
-pub async fn show_requests(ident: Identity, pool: web::Data<Pool>) -> impl Responder {
-    HttpResponse::MethodNotAllowed().finish()
+pub async fn show_requests(ident: Identity, pool: web::Data<Pool>) -> RequestResult {
+    let userid = get_identity(&ident)?.userid;
+
+    let friends: Vec<Friend> = diesel::sql_query(format!(r#"
+SELECT requests.userid, usernames.handle, profiles.summary, profiles.bio, requests.since
+FROM (
+    SELECT user_to AS userid, since
+    FROM relations
+    WHERE user_from={userid}
+    AND status='pending_second_first'
+    UNION
+    SELECT user_from AS userid, since
+    FROM relations
+    WHERE user_to={userid}
+    AND status='pending_first_second'
+) AS requests
+INNER JOIN profiles ON profiles.id=requests.userid
+INNER JOIN usernames ON usernames.id=requests.userid
+ORDER BY requests.since
+"#, userid=userid)).get_results(&pool.get()?)?;
+
+    Ok(HttpResponse::Ok().json(serde_json::to_string(&friends).unwrap()))
 }
 
 #[inline(always)]

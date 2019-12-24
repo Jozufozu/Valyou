@@ -1,4 +1,4 @@
-DROP TRIGGER new_account_trigger ON new_account;
-DROP VIEW new_account;
-DROP FUNCTION insert_new_account;
-DROP FUNCTION gen_discriminator;
+drop trigger new_account_trigger on new_account;
+drop view new_account;
+drop function if exists insert_new_account;
+drop function if exists gen_discriminator;

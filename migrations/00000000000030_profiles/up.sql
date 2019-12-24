@@ -1,18 +1,23 @@
-CREATE TYPE visibility AS ENUM ('public', 'private', 'friends');
+create type visibility as enum ('public', 'private', 'friends');
 
-CREATE TABLE profiles (
-    id          BIGINT  PRIMARY KEY REFERENCES accounts ON UPDATE CASCADE ON DELETE CASCADE,
-    visibility  visibility  NOT NULL    default 'private',
-    summary     VARCHAR,
-    bio         VARCHAR,
+create table profiles (
+    userid          bigint  primary key references accounts on update cascade on delete cascade,
+    visibility  visibility  not null    default 'private',
+    summary     varchar(120),
+    bio         varchar(400),
     modified    timestamp
 );
 
-CREATE TABLE usernames (
-    id              BIGINT      PRIMARY KEY REFERENCES profiles ON UPDATE CASCADE ON DELETE CASCADE,
-    username        VARCHAR     NOT NULL,
-    discriminator   SMALLINT    NOT NULL    CHECK ( discriminator < 10000 and discriminator > 0 ),
+create table usernames (
+    userid              bigint      primary key references profiles on update cascade on delete cascade,
+    username        varchar     not null,
+    discriminator   smallint    not null    check ( discriminator < 10000 and discriminator > 0 ),
     modified        timestamp,
 
-    UNIQUE (username, discriminator)
+    unique (username, discriminator)
 );
+
+create view searchable as
+    select u.userid, u.username, u.discriminator, p.summary, p.bio from profiles p
+    inner join usernames u on p.userid = u.userid
+    where p.visibility!='private';

@@ -24,7 +24,10 @@ pub enum Error {
 
 #[derive(Debug, Display)]
 pub enum ConstraintViolation {
-    AuthorOwnsJournal
+    AuthorOwnsJournal,
+    ProperEmail,
+    EditAfterDay,
+    ArePublic
 }
 
 impl STDError for Error {}
@@ -79,6 +82,9 @@ impl std::convert::TryFrom<&str> for ConstraintViolation {
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value {
             "author_owns_journal" => Ok(ConstraintViolation::AuthorOwnsJournal),
+            "proper_email" => Ok(ConstraintViolation::ProperEmail),
+            "edit_after_day" => Ok(ConstraintViolation::EditAfterDay),
+            "are_public" => Ok(ConstraintViolation::ArePublic),
             _ => Err(())
         }
     }
@@ -87,7 +93,10 @@ impl std::convert::TryFrom<&str> for ConstraintViolation {
 impl From<ConstraintViolation> for Error {
     fn from(cv: ConstraintViolation) -> Self {
         match cv {
-            ConstraintViolation::AuthorOwnsJournal => Error::BadRequest("User does not own journal".into())
+            ConstraintViolation::AuthorOwnsJournal => Error::BadRequest("User does not own journal".into()),
+            ConstraintViolation::ProperEmail => Error::BadRequest("Please provide a valid email address".into()),
+            ConstraintViolation::EditAfterDay => Error::BadRequest("Cannot edit an entry 24 hours after it's creation".into()),
+            ConstraintViolation::ArePublic => Error::BadRequest("You and the other person must have non-private profiles".into()),
         }
     }
 }

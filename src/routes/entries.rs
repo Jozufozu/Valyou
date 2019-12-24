@@ -1,55 +1,11 @@
 use actix_identity::Identity;
 use actix_web::{HttpResponse, web};
-use crate::models::visibility::Visibility;
 use crate::errors::{Error, RequestResult};
 use crate::Pool;
 use diesel::{prelude::*, QueryDsl};
 use crate::schema::{entries, entry_tags};
 use crate::models::{Entry, SearchMethod, SearchQuery};
 use crate::routes::account::get_identity;
-
-
-macro_rules! entries_and_friends {
-    ($user:expr) => {
-        {
-            use crate::schema::entries;
-            use crate::schema::relations;
-            use crate::schema::journals;
-
-            entries::table
-                .select(
-                {
-                    use self::entries::dsl::*;
-                    (id, author, journal, created, modified, modifiedc, content, significance)
-                })
-                .left_join(relations::table.on(
-                    relations::user_from.eq(entries::author).and(relations::user_to.eq($user))
-                        .or(relations::user_to.eq(entries::author).and(relations::user_from.eq($user)))
-                ))
-                .inner_join(journals::table.on(entries::journal.eq(journals::id)))
-        }
-    };
-}
-
-macro_rules! visible_post {
-    ($user:expr) => {
-        {
-            use crate::schema::entries::dsl::{author};
-            use crate::schema::relations::dsl::*;
-            use crate::schema::journals;
-
-            author.eq($user)
-                .or(journals::visibility.eq(Visibility::Public))
-                .or(
-                    journals::visibility.eq(Visibility::Friends)
-                        .and(
-                            user_from.eq(author).and(user_to.eq($user))
-                                .or(user_to.eq(author).and(user_from.eq($user)))
-                        )
-                )
-        }
-    };
-}
 
 #[derive(Debug, Deserialize)]
 pub struct CreateRequest {
@@ -141,7 +97,7 @@ pub async fn create(form: web::Json<CreateRequest>, ident: Identity, pool: web::
         use self::entries::dsl::*;
         diesel::insert_into(entries)
             .values(&new_entry)
-            .returning((id, author, journal, created, modified, modifiedc, content, significance))
+            .returning((entryid, author, journal, created, modified, modifiedc, content, significance))
             .get_result(&db)?
     };
 
@@ -178,27 +134,26 @@ pub async fn edit(entryid: web::Path<i64>, request: web::Json<EditRequest>, iden
 pub async fn in_journal(args: web::Path<(i64, SearchMethod)>, query: web::Query<SearchQuery>, ident: Identity, pool: web::Data<Pool>) -> RequestResult {
     let (journalid, method) = args.into_inner();
     let SearchQuery { id, limit } = query.into_inner();
-    let searchid = id;
 
     let claims = get_identity(&ident)?;
 
     let found: Vec<Entry> = {
-        use self::entries::{id, journal};
-
-        let predicate = visible_post!(claims.userid).and(journal.eq(journalid));
+        use self::entries::dsl::*;
 
         match method {
             SearchMethod::Before => {
-                entries_and_friends!(claims.userid)
-                    .filter(id.lt(searchid).and(predicate))
-                    .order(id.desc())
+                entries
+                    .select((entryid, author, journal, created, modified, modifiedc, content, significance))
+                    .filter(entryid.lt(id).and(journal.eq(journalid)))
+                    .order(entryid.desc())
                     .limit(limit)
                     .get_results(&pool.get()?)?
             },
             SearchMethod::After => {
-                entries_and_friends!(claims.userid)
-                    .filter(id.gt(searchid).and(predicate))
-                    .order(id.asc())
+                entries
+                    .select((entryid, author, journal, created, modified, modifiedc, content, significance))
+                    .filter(entryid.gt(id).and(journal.eq(journalid)))
+                    .order(entryid.asc())
                     .limit(limit)
                     .get_results(&pool.get()?)?
             },
@@ -212,17 +167,18 @@ pub async fn in_journal(args: web::Path<(i64, SearchMethod)>, query: web::Query<
 }
 
 pub async fn find(entryid: web::Path<i64>, ident: Identity, pool: web::Data<Pool>) -> RequestResult {
-    let entryid = entryid.into_inner();
+    let eid = entryid.into_inner();
 
     let claims = get_identity(&ident)?;
 
     let db = pool.get()?;
 
     let found: Entry = {
-        use self::entries::id;
+        use self::entries::dsl::*;
 
-        entries_and_friends!(claims.userid)
-            .filter(id.eq(entryid).and(visible_post!(claims.userid)))
+        entries
+            .select((entryid, author, journal, created, modified, modifiedc, content, significance))
+            .filter(entryid.eq(eid))
             .get_result(&db)?
     };
 

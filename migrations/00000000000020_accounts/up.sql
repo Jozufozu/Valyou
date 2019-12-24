@@ -1,8 +1,9 @@
-CREATE TABLE accounts (
-    id          BIGINT      PRIMARY KEY default id_generator(),
-    email       VARCHAR     NOT NULL    UNIQUE,
-    hash        VARCHAR     NOT NULL,
-    created     timestamp   NOT NULL    default now(),
+create table accounts (
+    userid      bigint      primary key default id_generator(),
+    email       varchar     not null    unique,
+    hash        varchar     not null,
+    created     timestamp   not null    default now(),
     modified    timestamp,
-    phone       VARCHAR
+
+    constraint proper_email check (email ~* '^[a-za-z0-9._%-]+@[a-za-z0-9.-]+[.][a-za-z]+$')
 );

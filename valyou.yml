@@ -3,7 +3,7 @@ info:
   title: Valyou
   version: '1.0'
 servers:
-  - url: https://api.server.test/v1
+  - url: 127.0.0.1:8088
 tags:
   - name: Journals
   - name: Entries
@@ -281,11 +281,7 @@ paths:
           in: path
           required: true
           schema:
-            oneOf:
-              - $ref: "#/components/schemas/Snowflake"
-              - type: string
-                enum:
-                  - self
+            $ref: "#/components/schemas/Snowflake"
       responses:
         '200':
           description: OK
@@ -299,22 +295,13 @@ paths:
           description: Login required
         '403':
           description: Blocked by user
-  /user:
+  /user/self/profile:
     get:
       tags:
         - Profiles
-      summary: Search for users
-      parameters:
-        - name: q
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: count
-          in: query
-          schema:
-            type: integer
-            default: 10
+      summary: View the current user's profile
+      security:
+        - LoggedIn: []
       responses:
         '200':
           description: Found users
@@ -324,12 +311,14 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Profile"
-        '204':
-          description: Nothing found
+        '401':
+          description: Login required
     patch:
       tags:
         - Profiles
       summary: Edit the user's profile
+      security:
+        - LoggedIn: []
       requestBody:
         content:
           application/json:
@@ -342,6 +331,26 @@ paths:
             appliciation/json:
               schema:
                 $ref: "#/components/schemas/Profile"
+        '400':
+          description: Bad request
+        '401':
+          description: Login required
+  /user/self/profile/set_visibility/{visibility}:
+    patch:
+      tags:
+        - Profiles
+      summary: Change the user's profile's visibility
+      security:
+        - LoggedIn: []
+      parameters:
+        - name: visibility
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Visibility"
+      responses:
+        '200':
+          description: Updated
         '400':
           description: Bad request
         '401':
@@ -372,19 +381,13 @@ paths:
           description: Bad request
         '401':
           description: Login required
-        '403':
-          description: Forbidden
   /user/{userid}/friends:
     parameters:
       - name: userid
         in: path
         required: true
         schema:
-          oneOf:
-            - $ref: "#/components/schemas/Snowflake"
-            - type: string
-              enum:
-                - self
+          $ref: "#/components/schemas/Snowflake"
     get:
       tags:
         - Friends
@@ -467,10 +470,6 @@ paths:
       tags:
         - Friends
       summary: Get the user's pending friend requests
-      parameters:
-        - $ref: "#/components/parameters/Method"
-        - $ref: "#/components/parameters/Limit"
-        - $ref: "#/components/parameters/ID"
       security:
         - LoggedIn: []
       responses:
@@ -564,7 +563,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/Account"
+              email:
+                type: string
+                format: email
+              password:
+                type: string
+                format: password
+              username:
+                $ref: "#/components/schemas/Username"
       responses:
         '204':
           description: Account created
@@ -611,6 +617,7 @@ paths:
           application/json:
             schema:
               type: object
+              additionalProperties: false
               properties:
                 email:
                   type: string
@@ -619,7 +626,7 @@ paths:
                   type: string
                   format: password
       responses:
-        '200':
+        '204':
           description: Login successful
         '400':
           description: Bad username/password
@@ -638,29 +645,55 @@ components:
   schemas:
     Snowflake:
       type: string
-      readOnly: true
       description: A globally unique, time sortable id
-      example: 02465324613585
+      example: '1234567891011121314'
+      maxLength: 19
+      minLength: 19
+      pattern: '[0-9]{19}'
+    Username:
+        type: string
+        example: personman123
+        pattern: '\S{,32}'
+        maxLength: 32
+    Discriminator:
+      format: stringS
+      pattern: '[0-9]{4}'
+      maxLength: 4
+      minLength: 4
+      example: '4312'
     Profile:
       type: object
+      additionalProperties: false
       properties:
         id:
           $ref: "#/components/schemas/Snowflake"
         username:
-          type: string
-          readOnly: true
-          example: personman123
+          $ref: "#/components/schemas/Username"
+        discriminator:
+          $ref: "#/components/schemas/Username"
         friends:
           type: boolean
           readOnly: true
         bio:
           type: string
-          example: I am a person!
+          example: I am a good person!
+          maxLength: 500
         summary:
           type: string
           example: I am a person!
+          maxLength: 120
+        created:
+          type: string
+          format: date-time
+          readOnly: true
+        modified:
+          type: string
+          format: date-time
+          nullable: true
+          readOnly: true
     Account:
       type: object
+      additionalProperties: false
       properties:
         id:
           $ref: "#/components/schemas/Snowflake"
@@ -668,15 +701,9 @@ components:
           type: string
           format: email
         username:
-          type: string
-          example: personman123
-        password:
-          type: string
-          format: password
-          writeOnly: true
-        phone:
-          type: string
-          example: "18181234567"
+          $ref: "#/components/schemas/Username"
+        discriminator:
+          $ref: "#/components/schemas/Discriminator"
         created:
           type: string
           format: date-time
@@ -688,6 +715,7 @@ components:
           readOnly: true
     Settings:
       type: object
+      additionalProperties: false
       properties:
         profile_visibility:
           $ref: "#/components/schemas/Visibility"
@@ -699,6 +727,7 @@ components:
         - private
     Entry:
       type: object
+      additionalProperties: false
       properties:
         id:
           $ref: "#/components/schemas/Snowflake"
@@ -724,6 +753,7 @@ components:
           readOnly: true
         content:
           type: string
+          maxLength: 50000
         significance:
           type: number
           format: float
@@ -735,10 +765,9 @@ components:
           allOf:
             - $ref: "#/components/schemas/Snowflake"
           readOnly: false
-        visibility:
-          $ref: "#/components/schemas/Visibility"
     Journal:
       type: object
+      additionalProperties: false
       properties:
         id:
           $ref: "#/components/schemas/Snowflake"
@@ -746,7 +775,7 @@ components:
           type: boolean
           description: Whether or not the user is the creator of this Journal
           readOnly: true
-        author:
+        owner:
           $ref: "#/components/schemas/Snowflake"
         created:
           type: string
@@ -757,14 +786,21 @@ components:
           format: date-time
           nullable: true
           readOnly: true
-        name:
+        title:
           type: string
+          maxLength: 32
         description:
           type: string
+          maxLength: 240
+        color:
+          type: integer
+          maximum: 47
+          minimum: 0
+          format: int32
         visibility:
           $ref: "#/components/schemas/Visibility"
       required:
-        - name
+        - title
   responses:
     AccountSettings:
       description: OK
@@ -778,6 +814,7 @@ components:
         application/json:
           schema:
             type: array
+            maxLength: 40
             items:
               $ref: "#/components/schemas/Entry"
   parameters:
@@ -795,7 +832,10 @@ components:
       required: false
       schema:
         type: integer
+        format: int32
         default: 20
+        minimum: 1
+        maximum: 40
     Method:
       name: method
       description: Where to get the items relative to the given id.

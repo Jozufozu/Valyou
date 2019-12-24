@@ -14,8 +14,6 @@ pub struct Account {
     pub created: chrono::NaiveDateTime,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub modified: Option<chrono::NaiveDateTime>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub phone: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Queryable)]
@@ -53,26 +51,15 @@ pub struct Profile {
     pub bio: Option<String>,
 }
 
-#[derive(Debug, Serialize, Queryable, QueryableByName)]
+#[derive(Debug, Serialize, Queryable)]
 pub struct Friend {
-    #[sql_type = "Int8"]
     pub userid: i64,
-
-    #[sql_type = "Varchar"]
     pub username: String,
-
-    #[sql_type = "Int2"]
     pub discriminator: i16,
-
-    #[sql_type = "Nullable<Varchar>"]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub summary: Option<String>,
-
-    #[sql_type = "Nullable<Varchar>"]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bio: Option<String>,
-
-    #[sql_type = "Timestamp"]
     pub since: chrono::NaiveDateTime
 }
 

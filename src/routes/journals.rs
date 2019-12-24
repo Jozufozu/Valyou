@@ -19,7 +19,7 @@ pub struct CreateRequest {
 #[table_name = "journals"]
 pub struct NewJournal {
     pub owner: i64,
-    pub name: String,
+    pub title: String,
     pub description: Option<String>,
     pub visibility: Visibility
 }
@@ -30,7 +30,7 @@ pub async fn create(create: web::Json<CreateRequest>, ident: Identity, pool: web
 
     let new_journal = NewJournal {
         owner: identity.userid,
-        name,
+        title: name,
         description,
         visibility: visibility.unwrap_or(Visibility::Private)
     };

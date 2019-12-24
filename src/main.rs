@@ -6,7 +6,7 @@
 #[macro_use] extern crate actix_rt;
 #[macro_use] extern crate actix_web;
 
-use actix_web::{web, middleware, App, HttpServer};
+use actix_web::{web, middleware, App, HttpServer, Responder, HttpResponse};
 use diesel::prelude::*;
 use diesel::r2d2::{self, ConnectionManager};
 use dotenv;
@@ -21,6 +21,10 @@ mod errors;
 mod routes;
 
 type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
+
+async fn missing() -> impl Responder {
+    HttpResponse::NotFound().finish()
+}
 
 #[actix_rt::main]
 async fn main() -> io::Result<()> {
@@ -43,6 +47,7 @@ async fn main() -> io::Result<()> {
                     .secure(false)
             ))
             .wrap(middleware::Logger::default())
+            .default_service(web::to(missing))
             .service(
                 web::scope("/account")
                     .route("", web::get().to(account::show))
@@ -55,10 +60,14 @@ async fn main() -> io::Result<()> {
             )
             .service(web::scope("/user")
                 .route("", web::get().to(profiles::search))
-                .route("", web::patch().to(profiles::edit))
-                .service(web::scope("/self/friends")
-                    .route("", web::get().to(relationships::view_own_friends))
-                    .route("/request", web::get().to(relationships::show_requests))
+                .service(web::scope("/self")
+                    .route("/friends", web::get().to(relationships::view_own_friends))
+                    .route("/friends/request", web::get().to(relationships::show_requests))
+                    .service(web::scope("/profile")
+                        .route("", web::get().to(profiles::view_self))
+                        .route("", web::patch().to(profiles::edit))
+                        .route("/set_visibility/{visibility}", web::patch().to(profiles::set_visibility))
+                    )
                 )
                 .service(web::scope("/{userid}")
                     .route("/profile", web::get().to(profiles::view))
@@ -86,7 +95,7 @@ async fn main() -> io::Result<()> {
                 .service(web::scope("/{journalid}")
                     .route("", web::get().to(journals::find))
                     .route("", web::patch().to(journals::edit))
-                    .route("/entries/{method}", web::get().to(entries::in_journal))
+                    .route("/entries", web::get().to(entries::in_journal))
                 )
             )
     })

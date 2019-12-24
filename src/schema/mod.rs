@@ -2,13 +2,12 @@ table! {
     use crate::models::{status::Status, visibility::db::Visibility};
     use diesel::sql_types::*;
 
-    accounts (id) {
-        id -> Int8,
+    accounts (userid) {
+        userid -> Int8,
         email -> Varchar,
         hash -> Varchar,
         created -> Timestamp,
         modified -> Nullable<Timestamp>,
-        phone -> Nullable<Varchar>,
     }
 }
 
@@ -16,8 +15,8 @@ table! {
     use crate::models::{status::Status, visibility::db::Visibility};
     use diesel::sql_types::*;
 
-    entries (id) {
-        id -> Int8,
+    entries (entryid) {
+        entryid -> Int8,
         author -> Int8,
         journal -> Int8,
         created -> Timestamp,
@@ -43,10 +42,10 @@ table! {
     use crate::models::{status::Status, visibility::db::Visibility};
     use diesel::sql_types::*;
 
-    journals (id) {
-        id -> Int8,
+    journals (journalid) {
+        journalid -> Int8,
         owner -> Int8,
-        name -> Varchar,
+        title -> Varchar,
         created -> Timestamp,
         modified -> Nullable<Timestamp>,
         description -> Nullable<Varchar>,
@@ -59,8 +58,8 @@ table! {
     use crate::models::{status::Status, visibility::db::Visibility};
     use diesel::sql_types::*;
 
-    profiles (id) {
-        id -> Int8,
+    profiles (userid) {
+        userid -> Int8,
         visibility -> Visibility,
         summary -> Nullable<Varchar>,
         bio -> Nullable<Varchar>,
@@ -75,8 +74,8 @@ table! {
     relations (user_from, user_to) {
         user_from -> Int8,
         user_to -> Int8,
-        since -> Timestamp,
         status -> Status,
+        since -> Timestamp,
     }
 }
 
@@ -84,8 +83,8 @@ table! {
     use crate::models::{status::Status, visibility::db::Visibility};
     use diesel::sql_types::*;
 
-    usernames (id) {
-        id -> Int8,
+    usernames (userid) {
+        userid -> Int8,
         username -> Varchar,
         discriminator -> Int2,
         modified -> Nullable<Timestamp>,
@@ -96,8 +95,8 @@ joinable!(entries -> journals (journal));
 joinable!(entries -> profiles (author));
 joinable!(entry_tags -> entries (entry));
 joinable!(journals -> profiles (owner));
-joinable!(profiles -> accounts (id));
-joinable!(usernames -> profiles (id));
+joinable!(profiles -> accounts (userid));
+joinable!(usernames -> profiles (userid));
 
 allow_tables_to_appear_in_same_query!(
     accounts,

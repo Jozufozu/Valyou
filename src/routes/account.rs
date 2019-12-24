@@ -1,6 +1,6 @@
 use actix_web::{web, HttpResponse, Responder};
 use diesel::prelude::*;
-use diesel::r2d2::{self, ConnectionManager};
+use diesel::r2d2;
 use dotenv;
 use actix_identity::Identity;
 use bcrypt;
@@ -9,8 +9,6 @@ use crate::{Pool, errors::*, models::Account};
 use crate::errors::Error;
 use jsonwebtoken::{Validation, Algorithm};
 use std::time::{UNIX_EPOCH, SystemTime};
-use self::r2d2::PooledConnection;
-use crate::models::visibility::Visibility::Private;
 
 static SECRET: &'static str = dotenv!("JWT_SECRET");
 

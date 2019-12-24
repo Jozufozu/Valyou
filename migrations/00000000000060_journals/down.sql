@@ -1,1 +1,1 @@
-DROP TABLE journals;
+drop table journals;

@@ -1,11 +1,11 @@
 
-CREATE TABLE journals (
-    id          BIGINT      PRIMARY KEY default id_generator(),
-    owner       BIGINT      NOT NULL    REFERENCES profiles ON UPDATE CASCADE ON DELETE CASCADE,
-    name        VARCHAR     NOT NULL,
-    created     timestamp   NOT NULL    default now(),
+create table journals (
+    journalid   bigint      primary key default id_generator(),
+    owner       bigint      not null    references profiles on update cascade on delete cascade,
+    title       varchar(32) not null,
+    created     timestamp   not null    default now(),
     modified    timestamp,
-    description VARCHAR,
-    visibility  visibility  NOT NULL,
-    color       INT         NOT NULL    default 0
+    description varchar(240),
+    visibility  visibility  not null,
+    color       int         not null    default 0
 );

@@ -18,4 +18,11 @@ begin
 end;
 $$ language plpgsql;
 
+
+create or replace function timestamp_guard() returns trigger as $$
+begin
+    raise check_violation using constraint = 'edit_timestamp';
+end;
+$$ language plpgsql;
+
 select id_generator();

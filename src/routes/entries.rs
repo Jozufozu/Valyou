@@ -1,31 +1,25 @@
 use actix_identity::Identity;
 use actix_web::{HttpResponse, web};
-use crate::errors::{Error, RequestResult};
-use crate::Pool;
 use diesel::{prelude::*, QueryDsl};
-use crate::schema::{entries, entry_tags};
-use crate::models::{Entry, SearchMethod, SearchQuery};
+
+use crate::errors::{Error, RequestResult};
+use crate::models::{self, Entry, SearchMethod, SearchQuery};
+use crate::Pool;
 use crate::routes::account::get_identity;
+use crate::schema::{entries, entry_tags};
 
 #[derive(Debug, Deserialize)]
 pub struct CreateRequest {
     pub content: String,
     pub significance: Option<f64>,
     pub tags: Vec<String>,
-    pub journal: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, AsChangeset)]
+#[table_name = "entries"]
 pub struct EditRequest {
     pub content: Option<String>,
     pub significance: Option<f64>,
-}
-
-#[derive(Debug, AsChangeset)]
-#[table_name = "entries"]
-pub struct EditEntry {
-    pub content: Option<String>,
-    pub significance: Option<f64>
 }
 
 #[derive(Debug, Insertable)]
@@ -39,8 +33,11 @@ pub struct NewEntry {
 
 #[derive(Debug, Serialize)]
 pub struct EntryResponse {
+    #[serde(with = "models::id_serde")]
     pub id: i64,
+    #[serde(with = "models::id_serde")]
     pub author: i64,
+    #[serde(with = "models::id_serde")]
     pub journal: i64,
     pub creator: bool,
     pub created: chrono::NaiveDateTime,
@@ -49,6 +46,7 @@ pub struct EntryResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub modifiedc: Option<chrono::NaiveDateTime>,
     pub content: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub significance: Option<f64>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<String>
@@ -71,16 +69,13 @@ impl EntryResponse {
     }
 }
 
-pub async fn create(form: web::Json<CreateRequest>, ident: Identity, pool: web::Data<Pool>) -> RequestResult {
+pub async fn create(path: web::Path<i64>, form: web::Json<CreateRequest>, ident: Identity, pool: web::Data<Pool>) -> RequestResult {
     let CreateRequest {
         content,
         significance,
-        mut tags,
-        journal
+        mut tags
     } = form.into_inner();
-
-    let jid = journal.parse::<i64>()
-        .map_err(|e| Error::BadRequest(format!("{:?}", e)))?;
+    let jid = path.into_inner();
 
     let claims = get_identity(&ident)?;
 
@@ -118,17 +113,23 @@ pub async fn create(form: web::Json<CreateRequest>, ident: Identity, pool: web::
 
     let response = EntryResponse::new(new, tags, claims.userid);
 
-    Ok(HttpResponse::Created().json(serde_json::to_string(&response).unwrap()))
+    Ok(HttpResponse::Created().json(response))
 
 }
 
-pub async fn edit(entryid: web::Path<i64>, request: web::Json<EditRequest>, ident: Identity, pool: web::Data<Pool>) -> RequestResult {
-    let entryid = entryid.into_inner();
-    let EditRequest { content, significance } = request.into_inner();
+pub async fn edit(path: web::Path<(i64, i64)>, json: web::Json<EditRequest>, ident: Identity, pool: web::Data<Pool>) -> RequestResult {
+    let (jid, eid) = path.into_inner();
+    let edit = json.into_inner();
 
-    let db = pool.get()?;
+    use crate::schema::entries::dsl::*;
 
-    Err(Error::NotFound)
+    let entry: Entry = diesel::update(entries)
+        .filter(entryid.eq(eid).and(journal.eq(jid)))
+        .set(&edit)
+        .returning((entryid, author, journal, created, modified, modifiedc, content, significance))
+        .get_result(&pool.get()?)?;
+
+    Ok(HttpResponse::Ok().json(entry))
 }
 
 pub async fn in_journal(args: web::Path<(i64, SearchMethod)>, query: web::Query<SearchQuery>, ident: Identity, pool: web::Data<Pool>) -> RequestResult {
@@ -156,18 +157,17 @@ pub async fn in_journal(args: web::Path<(i64, SearchMethod)>, query: web::Query<
                     .order(entryid.asc())
                     .limit(limit)
                     .get_results(&pool.get()?)?
-            },
-            _ => todo!("Have to figure out how to do a query like this.")
+            }
         }
     };
 
     let map: Vec<EntryResponse> = found.into_iter().map(|e| EntryResponse::new(e, Vec::with_capacity(0), claims.userid)).collect() ;
 
-    Ok(HttpResponse::Ok().json(serde_json::to_string(&map).unwrap()))
+    Ok(HttpResponse::Ok().json(map))
 }
 
-pub async fn find(entryid: web::Path<i64>, ident: Identity, pool: web::Data<Pool>) -> RequestResult {
-    let eid = entryid.into_inner();
+pub async fn find(entryid: web::Path<(i64, i64)>, ident: Identity, pool: web::Data<Pool>) -> RequestResult {
+    let (jid, eid) = entryid.into_inner();
 
     let claims = get_identity(&ident)?;
 
@@ -178,7 +178,7 @@ pub async fn find(entryid: web::Path<i64>, ident: Identity, pool: web::Data<Pool
 
         entries
             .select((entryid, author, journal, created, modified, modifiedc, content, significance))
-            .filter(entryid.eq(eid))
+            .filter(entryid.eq(eid).and(journal.eq(jid)))
             .get_result(&db)?
     };
 
@@ -193,5 +193,5 @@ pub async fn find(entryid: web::Path<i64>, ident: Identity, pool: web::Data<Pool
 
     let response = EntryResponse::new(found, tags, claims.userid);
 
-    Ok(HttpResponse::Ok().json(serde_json::to_string(&response).unwrap()))
+    Ok(HttpResponse::Ok().json(response))
 }

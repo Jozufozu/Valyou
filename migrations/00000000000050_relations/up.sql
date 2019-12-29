@@ -46,6 +46,21 @@ create view friend_requests as
     ) as f
     inner join searchable p on f.friend=p.userid;
 
+
+create or replace function edit_relation() returns trigger as $$
+begin
+    select now() into new.since;
+    return new;
+end;
+$$ language plpgsql;
+
+create trigger edit_relation
+    before update
+    on relations
+    for each row
+execute procedure edit_relation();
+
+
 create or replace function cascade_private() returns trigger as $$
 begin
     delete from relations
@@ -64,3 +79,9 @@ on profiles
 for each row
 when ( new.visibility='private' )
 execute procedure cascade_private();
+
+create trigger timestamp_guard
+    before update of since
+    on relations
+    for each row
+execute procedure timestamp_guard();

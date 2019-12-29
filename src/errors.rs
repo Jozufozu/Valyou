@@ -27,6 +27,7 @@ pub enum ConstraintViolation {
     AuthorOwnsJournal,
     ProperEmail,
     EditAfterDay,
+    EditTimestamp,
     ArePublic
 }
 
@@ -84,6 +85,7 @@ impl std::convert::TryFrom<&str> for ConstraintViolation {
             "author_owns_journal" => Ok(ConstraintViolation::AuthorOwnsJournal),
             "proper_email" => Ok(ConstraintViolation::ProperEmail),
             "edit_after_day" => Ok(ConstraintViolation::EditAfterDay),
+            "edit_timestamp" => Ok(ConstraintViolation::EditTimestamp),
             "are_public" => Ok(ConstraintViolation::ArePublic),
             _ => Err(())
         }
@@ -95,7 +97,8 @@ impl From<ConstraintViolation> for Error {
         match cv {
             ConstraintViolation::AuthorOwnsJournal => Error::BadRequest("User does not own journal".into()),
             ConstraintViolation::ProperEmail => Error::BadRequest("Please provide a valid email address".into()),
-            ConstraintViolation::EditAfterDay => Error::BadRequest("Cannot edit an entry 24 hours after it's creation".into()),
+            ConstraintViolation::EditAfterDay => Error::BadRequest("Cannot edit the content of an entry 24 hours after it's creation".into()),
+            ConstraintViolation::EditTimestamp => Error::BadRequest("Cannot edit a timestamp".into()),
             ConstraintViolation::ArePublic => Error::BadRequest("You and the other person must have non-private profiles".into()),
         }
     }

@@ -8,6 +8,7 @@ table! {
         hash -> Varchar,
         created -> Timestamp,
         modified -> Nullable<Timestamp>,
+        modified_hash -> Nullable<Timestamp>,
     }
 }
 

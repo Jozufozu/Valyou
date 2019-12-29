@@ -1,16 +1,17 @@
 use actix_identity::Identity;
-use actix_web::{Responder, HttpResponse, web};
-use crate::Pool;
-use crate::models::visibility::Visibility;
+use actix_web::{HttpResponse, Responder, web};
+use diesel::RunQueryDsl;
+
 use crate::errors::{Error, ValyouResult};
+use crate::models::Journal;
+use crate::models::visibility::Visibility;
+use crate::Pool;
 use crate::routes::account::get_identity;
 use crate::schema::journals;
-use diesel::RunQueryDsl;
-use crate::models::Journal;
 
 #[derive(Debug, Deserialize)]
 pub struct CreateRequest {
-    pub name: String,
+    pub title: String,
     pub description: Option<String>,
     pub visibility: Option<Visibility>
 }
@@ -26,11 +27,11 @@ pub struct NewJournal {
 
 pub async fn create(create: web::Json<CreateRequest>, ident: Identity, pool: web::Data<Pool>) -> ValyouResult<HttpResponse> {
     let identity = get_identity(&ident)?;
-    let CreateRequest { name, description, visibility } = create.into_inner();
+    let CreateRequest { title, description, visibility } = create.into_inner();
 
     let new_journal = NewJournal {
         owner: identity.userid,
-        title: name,
+        title,
         description,
         visibility: visibility.unwrap_or(Visibility::Private)
     };
@@ -44,7 +45,7 @@ pub async fn create(create: web::Json<CreateRequest>, ident: Identity, pool: web
             .values(&new_journal)
             .get_result(&db)
             .map_err(|e| Error::from(e))
-            .map(|inserted: Journal| HttpResponse::Created().json(serde_json::to_string(&inserted).unwrap()))
+            .map(|inserted: Journal| HttpResponse::Created().json(inserted))
     }
 }
 

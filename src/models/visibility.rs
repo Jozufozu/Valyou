@@ -1,8 +1,9 @@
-use diesel::{serialize, deserialize};
-use diesel::deserialize::FromSql;
-use diesel::serialize::{ToSql, IsNull, Output};
-use diesel::pg::Pg;
 use std::io::Write;
+
+use diesel::{deserialize, serialize};
+use diesel::deserialize::FromSql;
+use diesel::pg::Pg;
+use diesel::serialize::{IsNull, Output, ToSql};
 
 pub mod db {
     #[derive(SqlType, QueryId)]

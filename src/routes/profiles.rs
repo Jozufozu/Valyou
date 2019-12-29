@@ -1,27 +1,16 @@
 use actix_identity::Identity;
-use actix_web::{Responder, HttpResponse, web};
+use actix_web::{HttpResponse, Responder, web};
 use diesel::prelude::*;
+
 use crate::errors::RequestResult;
+use crate::models::visibility::Visibility;
 use crate::Pool;
 use crate::routes::account::get_identity;
-use crate::models::visibility::Visibility;
-
-#[derive(Debug, Deserialize, Serialize, Queryable)]
-pub struct Profile {
-    pub id: i64,
-    pub username: String,
-    pub discriminator: i16,
-    pub summary: Option<String>,
-    pub bio: Option<String>,
-    pub visibility: Visibility,
-    pub modified: Option<chrono::NaiveDateTime>,
-    pub umodified: Option<chrono::NaiveDateTime>,
-}
+use crate::models::profiles::OwnProfile;
 
 #[derive(Debug, Deserialize)]
 pub struct EditRequest {
     pub username: Option<String>,
-    pub discriminator: Option<i16>,
     pub summary: Option<String>,
     pub bio: Option<String>,
 }
@@ -45,7 +34,7 @@ pub async fn set_visibility(to: web::Path<Visibility>, ident: Identity, pool: we
 pub async fn view_self(ident: Identity, pool: web::Data<Pool>) -> RequestResult {
     let me = get_identity(&ident)?.userid;
 
-    let me: Profile = {
+    let me: OwnProfile = {
         use crate::schema::usernames::dsl::{usernames, username, discriminator, modified as umodified};
         use crate::schema::profiles::dsl::*;
 
@@ -55,7 +44,7 @@ pub async fn view_self(ident: Identity, pool: web::Data<Pool>) -> RequestResult 
             .get_result(&pool.get()?)?
     };
 
-    Ok(HttpResponse::Ok().json(serde_json::to_string(&me).unwrap()))
+    Ok(HttpResponse::Ok().json(me))
 }
 
 pub async fn search(ident: Identity) -> impl Responder {

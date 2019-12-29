@@ -21,3 +21,41 @@ create view searchable as
     select u.userid, u.username, u.discriminator, p.summary, p.bio from profiles p
     inner join usernames u on p.userid = u.userid
     where p.visibility!='private';
+
+create or replace function edit_profile() returns trigger as $$
+begin
+    select now() into new.modified;
+    return new;
+end;
+$$ language plpgsql;
+
+create trigger edit_profile
+    before update
+    on profiles
+    for each row
+execute procedure edit_profile();
+
+create or replace function edit_username() returns trigger as $$
+begin
+    select now() into new.modified;
+    return new;
+end;
+$$ language plpgsql;
+
+create trigger edit_username
+    before update
+    on usernames
+    for each row
+execute procedure edit_username();
+
+create trigger timestamp_guard
+    before update of modified
+    on profiles
+    for each row
+execute procedure timestamp_guard();
+
+create trigger timestamp_guard
+    before update of modified
+    on usernames
+    for each row
+execute procedure timestamp_guard();

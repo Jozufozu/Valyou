@@ -1,14 +1,15 @@
-use actix_web::{web, HttpResponse, Responder};
+use std::time::{SystemTime, UNIX_EPOCH};
+
+use actix_identity::Identity;
+use actix_web::{HttpResponse, Responder, web};
+use bcrypt;
 use diesel::prelude::*;
 use diesel::r2d2;
 use dotenv;
-use actix_identity::Identity;
-use bcrypt;
+use jsonwebtoken::{Algorithm, Validation};
 
-use crate::{Pool, errors::*, models::Account};
+use crate::{errors::*, models::Account, Pool};
 use crate::errors::Error;
-use jsonwebtoken::{Validation, Algorithm};
-use std::time::{UNIX_EPOCH, SystemTime};
 
 static SECRET: &'static str = dotenv!("JWT_SECRET");
 
@@ -65,9 +66,7 @@ pub fn set_identity(ident: &Identity, id: i64) {
 
 pub async fn show(ident: Identity) -> RequestResult {
     let identity = get_identity(&ident)?;
-    serde_json::to_string(&identity)
-        .map_err(|_| Error::InternalServerError)
-        .map(|json| HttpResponse::Ok().json(json))
+    Ok(HttpResponse::Ok().json(identity))
 }
 
 pub async fn register(data: web::Json<CreateRequest>, pool: web::Data<Pool>) -> RequestResult {

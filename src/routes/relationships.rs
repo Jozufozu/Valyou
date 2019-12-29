@@ -1,11 +1,12 @@
 use actix_identity::Identity;
-use actix_web::{Responder, HttpResponse, web};
+use actix_web::{HttpResponse, Responder, web};
 use diesel::prelude::*;
-use crate::errors::{RequestResult, Error};
-use crate::routes::account::get_identity;
+
+use crate::errors::{Error, RequestResult};
 use crate::models::status::RelationStatus;
 use crate::Pool;
-use crate::models::Friend;
+use crate::routes::account::get_identity;
+use crate::models::profiles::Friend;
 
 pub async fn send_request(to: web::Path<i64>, ident: Identity, pool: web::Data<Pool>) -> RequestResult {
     let friendid = to.into_inner();
@@ -112,22 +113,23 @@ pub async fn view_own_friends(ident: Identity, pool: web::Data<Pool>) -> Request
             .get_results(&pool.get()?)?
     };
 
-    Ok(HttpResponse::Ok().json(serde_json::to_string_pretty(&friends).unwrap()))
+    Ok(HttpResponse::Ok().json(friends))
 }
 
 pub async fn show_requests(ident: Identity, pool: web::Data<Pool>) -> RequestResult {
-    let userid = get_identity(&ident)?.userid;
+    let me = get_identity(&ident)?.userid;
 
     let friends: Vec<Friend> = {
         use crate::schemas::views::friend_requests::dsl::*;
 
         friend_requests
             .select((friend, username, discriminator, summary, bio, since))
+            .filter(userid.eq(me))
             .order(friend.asc())
             .get_results(&pool.get()?)?
     };
 
-    Ok(HttpResponse::Ok().json(serde_json::to_string(&friends).unwrap()))
+    Ok(HttpResponse::Ok().json(friends))
 }
 
 #[inline(always)]

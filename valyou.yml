@@ -12,114 +12,95 @@ tags:
   - name: User
   - name: Account
 paths:
-  /entry:
+  /account:
     post:
       tags:
-        - Entries
-      summary: Create an entry
-      security:
-        - LoggedIn: []
+        - Account
+      summary: Create a new account
       requestBody:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/Entry"
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+                username:
+                  $ref: "#/components/schemas/Username"
       responses:
-        '201':
-          description: Entry posted successfully.
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Entry"
-                required:
-                  - content
+        '204':
+          description: Account created
         '400':
-          description: Invalid input
-        '401':
-          description: Login required
-  /entry/{entryid}:
-    parameters:
-      - name: entryid
-        in: path
-        required: true
-        schema:
-          $ref: "#/components/schemas/Snowflake"
+          description: Bad request
     get:
-      summary: Get a single entry
       tags:
-        - Entries
+        - Account
+      summary: Get current account details
       security:
         - LoggedIn: []
       responses:
         '200':
-          description: Entry found and returned
+          description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Entry"
+                $ref: "#/components/schemas/Account"
         '401':
           description: Login required
-        '404':
-          description: Journal not found
     patch:
-      summary: Update an entry
-      description: Editing content can only be done within 24 hours of the creation of the entry.
       tags:
-        - Entries
+        - Account
+      summary: Edit account details
       requestBody:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/Entry"
+              $ref: "#/components/schemas/Account"
       security:
         - LoggedIn: []
       responses:
-        '201':
-          description: Entry updated
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Entry"
-        '401':
-          description: Login required
-        '403':
-          description: Forbidden
-        '404':
-          description: Entry not found
-  /entry/{entryid}/tags:
-    parameters:
-      - name: entryid
-        in: path
-        required: true
-        schema:
-          $ref: "#/components/schemas/Snowflake"
-    patch:
-      summary: Add tags to an entry
+        '204':
+          description: Account created
+        '400':
+          description: Bad request
+  /account/auth:
+    post:
       tags:
-        - Entries
+        - Account
+      summary: Login as a user
       requestBody:
         content:
           application/json:
             schema:
-              type: array
-              items:
-                type: string
+              type: object
+              additionalProperties: false
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+      responses:
+        '204':
+          description: Login successful
+        '400':
+          description: Bad username/password
+    delete:
+      tags:
+        - Account
+      summary: Log out
       security:
         - LoggedIn: []
       responses:
-        '201':
-          description: Entry updated
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Entry"
+        '204':
+          description: Logged out
         '401':
           description: Login required
-        '403':
-          description: Forbidden
-        '404':
-          description: Entry not found
   /journal:
     post:
       tags:
@@ -157,6 +138,7 @@ paths:
             application/json:
               schema:
                 type: array
+                maxItems: 40
                 items:
                   $ref: "#/components/schemas/Journal"
         '401':
@@ -209,7 +191,128 @@ paths:
           description: Forbidden
         '404':
           description: Journal not found
-  /journal/{journalid}/entries/{method}:
+  /journal/{journalid}/entries:
+    post:
+      tags:
+        - Entries
+      summary: Create an entry
+      security:
+        - LoggedIn: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Entry"
+      parameters:
+        - name: journalid
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/Snowflake"
+      responses:
+        '201':
+          description: Entry created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Entry"
+        '400':
+          description: Invalid input
+        '401':
+          description: Login required
+  /journal/{journalid}/entries/{entryid}:
+    parameters:
+      - name: journalid
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Snowflake"
+      - name: entryid
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Snowflake"
+    get:
+      summary: Get a single entry
+      tags:
+        - Entries
+      security:
+        - LoggedIn: []
+      responses:
+        '200':
+          description: Entry found and returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Entry"
+        '401':
+          description: Login required
+        '404':
+          description: Journal not found
+    patch:
+      summary: Update an entry
+      description: Editing content can only be done within 24 hours of the creation of the entry.
+      tags:
+        - Entries
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Entry"
+      security:
+        - LoggedIn: []
+      responses:
+        '201':
+          description: Entry updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Entry"
+        '401':
+          description: Login required
+        '403':
+          description: Forbidden
+        '404':
+          description: Entry not found
+  /journal/{journalid}/entries/{entryid}/tags:
+    parameters:
+      - name: journalid
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Snowflake"
+      - name: entryid
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Snowflake"
+    patch:
+      summary: Add tags to an entry
+      tags:
+        - Entries
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+      security:
+        - LoggedIn: []
+      responses:
+        '201':
+          description: Entry updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Entry"
+        '401':
+          description: Login required
+        '403':
+          description: Forbidden
+        '404':
+          description: Entry not found
+  /journal/{journalid}/{method}:
     get:
       summary: Get a list of entries in a journal
       tags:
@@ -224,6 +327,8 @@ paths:
         - $ref: "#/components/parameters/Method"
         - $ref: "#/components/parameters/Limit"
         - $ref: "#/components/parameters/ID"
+      security:
+        - LoggedIn: []
       responses:
         '200':
           $ref: "#/components/responses/EntryList"
@@ -364,19 +469,7 @@ paths:
         - LoggedIn: []
       responses:
         '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    with:
-                      $ref: "#/components/schemas/Profile"
-                    since:
-                      type: string
-                      format: date-time
+          $ref: "#/components/responses/FriendsList"
         '400':
           description: Bad request
         '401':
@@ -396,40 +489,13 @@ paths:
         - LoggedIn: []
       responses:
         '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    with:
-                      $ref: "#/components/schemas/Profile"
-                    since:
-                      type: string
-                      format: date-time
+          $ref: "#/components/responses/FriendsList"
         '400':
           description: Bad request
         '401':
           description: Login required
         '403':
           description: Forbidden
-    post:
-      tags:
-        - Friends
-      summary: Send a friend request to a user
-      security:
-        - LoggedIn: []
-      responses:
-        '204':
-          description: OK
-        '400':
-          description: Bad request
-        '401':
-          description: Login required
-        '403':
-          description: Blocked by user
     delete:
       tags:
         - Friends
@@ -480,17 +546,32 @@ paths:
         '401':
           description: Login required
   /user/{userid}/friends/request:
+    parameters:
+      - name: userid
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Snowflake"
     post:
+      tags:
+        - Friends
+      summary: Send a friend request to a user
+      security:
+        - LoggedIn: []
+      responses:
+        '204':
+          description: OK
+        '400':
+          description: Bad request
+        '401':
+          description: Login required
+        '403':
+          description: Blocked by user
+    patch:
       tags:
         - Friends
       summary: Accept a friend request
       description: Only the recipient can accept a friend request, but either can deny
-      parameters:
-        - name: userid
-          in: path
-          required: true
-          schema:
-            $ref: "#/components/schemas/Snowflake"
       security:
         - LoggedIn: []
       responses:
@@ -507,12 +588,6 @@ paths:
         - Friends
       summary: Deny a friend request
       description: Only the recipient can accept a friend request, but either can deny
-      parameters:
-        - name: userid
-          in: path
-          required: true
-          schema:
-            $ref: "#/components/schemas/Snowflake"
       security:
         - LoggedIn: []
       responses:
@@ -524,123 +599,6 @@ paths:
           description: Login required
         '403':
           description: Blocked by user
-  /account/settings:
-    get:
-      tags:
-        - Account
-      summary: Get user settings
-      security:
-        - LoggedIn: []
-      responses:
-        '200':
-          $ref: "#/components/responses/AccountSettings"
-        '401':
-          description: Login required
-    patch:
-      tags:
-        - Account
-      summary: Change user settings
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Settings"
-      security:
-        - LoggedIn: []
-      responses:
-        '204':
-          description: Update successful
-        '400':
-          description: Bad request
-        '401':
-          description: Login required
-  /account:
-    post:
-      tags:
-        - Account
-      summary: Create a new account
-      requestBody:
-        content:
-          application/json:
-            schema:
-              email:
-                type: string
-                format: email
-              password:
-                type: string
-                format: password
-              username:
-                $ref: "#/components/schemas/Username"
-      responses:
-        '204':
-          description: Account created
-        '400':
-          description: Bad request
-    get:
-      tags:
-        - Account
-      summary: Get current account details
-      security:
-        - LoggedIn: []
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Account"
-        '401':
-          description: Login required
-    patch:
-      tags:
-        - Account
-      summary: Edit account details
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Account"
-      security:
-        - LoggedIn: []
-      responses:
-        '204':
-          description: Account created
-        '400':
-          description: Bad request
-  /account/auth:
-    post:
-      tags:
-        - Account
-      summary: Login as a user
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              properties:
-                email:
-                  type: string
-                  format: email
-                password:
-                  type: string
-                  format: password
-      responses:
-        '204':
-          description: Login successful
-        '400':
-          description: Bad username/password
-    delete:
-      tags:
-        - Account
-      summary: Log out
-      security:
-        - LoggedIn: []
-      responses:
-        '204':
-          description: Logged out
-        '401':
-          description: Login required
 components:
   schemas:
     Snowflake:
@@ -653,7 +611,7 @@ components:
     Username:
         type: string
         example: personman123
-        pattern: '\S{,32}'
+        pattern: '\S{2,32}'
         maxLength: 32
     Discriminator:
       format: stringS
@@ -801,6 +759,13 @@ components:
           $ref: "#/components/schemas/Visibility"
       required:
         - title
+    Pagination:
+      type: object
+      additionalProperties: false
+      properties:
+        next_url:
+          type: string
+          description: The url that will retrieve the next set of values from the request
   responses:
     AccountSettings:
       description: OK
@@ -817,6 +782,21 @@ components:
             maxLength: 40
             items:
               $ref: "#/components/schemas/Entry"
+    FriendsList:
+      description: Ok
+      content:
+        application/json:
+          schema:
+            type: array
+            maxItems: 40
+            items:
+              type: object
+              properties:
+                with:
+                  $ref: "#/components/schemas/Profile"
+                since:
+                  type: string
+                  format: date-time
   parameters:
     ID:
       name: id
@@ -844,7 +824,6 @@ components:
       schema:
         type: string
         enum:
-          - around
           - before
           - after
   securitySchemes:

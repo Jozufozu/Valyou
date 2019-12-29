@@ -9,3 +9,22 @@ create table journals (
     visibility  visibility  not null,
     color       int         not null    default 0
 );
+
+create or replace function edit_journal() returns trigger as $$
+begin
+    select now() into new.modified;
+    return new;
+end;
+$$ language plpgsql;
+
+create trigger edit_journal
+    before update
+    on journals
+    for each row
+execute procedure edit_journal();
+
+create trigger timestamp_guard
+    before update of created, modified
+    on journals
+    for each row
+execute procedure timestamp_guard();

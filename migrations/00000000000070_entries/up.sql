@@ -26,7 +26,7 @@ create table entry_tags (
 create or replace function edit_entry() returns trigger as $$
 begin
     select now() into new.modified;
-    if (new.content notnull) then
+    if (new.content != old.content) then
         if ((floor(extract(epoch from (now()-old.created)))) > 86400) then
             raise check_violation using constraint = 'edit_after_day';
         end if;
@@ -39,7 +39,13 @@ end;
 $$ language plpgsql;
 
 create trigger edit_entry
-    before update
-    on entries
-    for each row
+before update
+on entries
+for each row
 execute procedure edit_entry();
+
+create trigger timestamp_guard
+before update of created, modified, modifiedc
+on entries
+for each row
+execute procedure timestamp_guard();

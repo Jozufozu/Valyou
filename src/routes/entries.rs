@@ -3,11 +3,11 @@ use actix_web::{HttpResponse, web};
 use diesel::{prelude::*, QueryDsl};
 
 use crate::errors::{Error, RequestResult};
-use crate::models::{self, Entry, SearchMethod, SearchQuery};
+use crate::models::{self, entries::Entry, SearchMethod, SearchQuery};
 use crate::models::pagination::{Paginated, Pagination};
 use crate::Pool;
 use crate::routes::account::get_identity;
-use crate::schema::{entries, entry_tags};
+use crate::schema::entries;
 
 #[derive(Debug, Deserialize)]
 pub struct CreateRequest {
@@ -32,44 +32,6 @@ pub struct NewEntry {
     pub significance: Option<f64>
 }
 
-#[derive(Debug, Serialize)]
-pub struct EntryResponse {
-    #[serde(with = "models::id_serde")]
-    pub id: i64,
-    #[serde(with = "models::id_serde")]
-    pub author: i64,
-    #[serde(with = "models::id_serde")]
-    pub journal: i64,
-    pub creator: bool,
-    pub created: chrono::NaiveDateTime,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub modified: Option<chrono::NaiveDateTime>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub modifiedc: Option<chrono::NaiveDateTime>,
-    pub content: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub significance: Option<f64>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub tags: Vec<String>
-}
-
-impl EntryResponse {
-    pub fn new(entry: Entry, tags: Vec<String>, current_user: i64) -> Self {
-        EntryResponse {
-            id: entry.id,
-            author: entry.author,
-            journal: entry.journal,
-            creator: entry.author == current_user,
-            created: entry.created,
-            modified: entry.modified,
-            modifiedc: entry.modifiedc,
-            content: entry.content,
-            significance: entry.significance,
-            tags
-        }
-    }
-}
-
 pub async fn create(path: web::Path<i64>, form: web::Json<CreateRequest>, ident: Identity, pool: web::Data<Pool>) -> RequestResult {
     let CreateRequest {
         content,
@@ -89,18 +51,18 @@ pub async fn create(path: web::Path<i64>, form: web::Json<CreateRequest>, ident:
         significance
     };
 
-    let new: Entry = {
+    let new: i64 = {
         use self::entries::dsl::*;
         diesel::insert_into(entries)
             .values(&new_entry)
-            .returning((entryid, author, journal, created, modified, modifiedc, content, significance))
+            .returning(entryid)
             .get_result(&db)?
     };
 
     if !tags.is_empty() {
-        use self::entry_tags::dsl::*;
+        use crate::schema::entry_tags::dsl::*;
 
-        let insert: Vec<_> = tags.iter().map(|t| (entry.eq(new.id), tag.eq(t))).collect();
+        let insert: Vec<_> = tags.iter().map(|t| (entry.eq(new), tag.eq(t))).collect();
 
         let result = diesel::insert_into(entry_tags)
             .values(&insert)
@@ -112,9 +74,7 @@ pub async fn create(path: web::Path<i64>, form: web::Json<CreateRequest>, ident:
         }
     }
 
-    let response = EntryResponse::new(new, tags, claims.userid);
-
-    Ok(HttpResponse::Created().json(response))
+    find(web::Path::from((jid, new)), ident, pool).await
 
 }
 
@@ -140,20 +100,18 @@ pub async fn in_journal(args: web::Path<(i64, SearchMethod)>, query: web::Query<
     let claims = get_identity(&ident)?;
 
     let found: Vec<Entry> = {
-        use self::entries::dsl::*;
+        use crate::views::visible_entries::dsl::*;
 
         match method {
             SearchMethod::Before => {
-                entries
-                    .select((entryid, author, journal, created, modified, modifiedc, content, significance))
+                visible_entries
                     .filter(entryid.lt(id).and(journal.eq(journalid)))
                     .order(entryid.desc())
                     .limit(limit)
                     .get_results(&pool.get()?)?
             },
             SearchMethod::After => {
-                entries
-                    .select((entryid, author, journal, created, modified, modifiedc, content, significance))
+                visible_entries
                     .filter(entryid.gt(id).and(journal.eq(journalid)))
                     .order(entryid.asc())
                     .limit(limit)
@@ -162,9 +120,7 @@ pub async fn in_journal(args: web::Path<(i64, SearchMethod)>, query: web::Query<
         }
     };
 
-    let map = found.into_iter().map(|e| EntryResponse::new(e, Vec::with_capacity(0), claims.userid)).collect() ;
-
-    Ok(HttpResponse::Ok().json(Paginated::paginate(map)))
+    Ok(HttpResponse::Ok().json(Paginated::paginate(found)))
 }
 
 pub async fn find(entryid: web::Path<(i64, i64)>, ident: Identity, pool: web::Data<Pool>) -> RequestResult {
@@ -172,27 +128,15 @@ pub async fn find(entryid: web::Path<(i64, i64)>, ident: Identity, pool: web::Da
 
     let claims = get_identity(&ident)?;
 
-    let db = pool.get()?;
+    // TODO: Do proper authorization here
 
     let found: Entry = {
-        use self::entries::dsl::*;
+        use crate::views::visible_entries::dsl::*;
 
-        entries
-            .select((entryid, author, journal, created, modified, modifiedc, content, significance))
+        visible_entries
             .filter(entryid.eq(eid).and(journal.eq(jid)))
-            .get_result(&db)?
+            .get_result(&pool.get()?)?
     };
 
-    let tags: Vec<String> = {
-        use self::entry_tags::dsl::*;
-
-        entry_tags
-            .filter(entry.eq(&found.id))
-            .select(tag)
-            .get_results(&db)?
-    };
-
-    let response = EntryResponse::new(found, tags, claims.userid);
-
-    Ok(HttpResponse::Ok().json(response))
+    Ok(HttpResponse::Ok().json(found))
 }

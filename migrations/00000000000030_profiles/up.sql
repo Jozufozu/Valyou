@@ -12,7 +12,7 @@ create table profiles
 create table usernames
 (
     userid        bigint primary key references profiles on update cascade on delete cascade,
-    username      varchar  not null,
+    username      varchar(32)  not null check ( username ~* '\S{3,32}' ),
     discriminator smallint not null check ( discriminator < 10000 and discriminator > 0 ),
     modified      timestamp,
 

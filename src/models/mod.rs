@@ -10,6 +10,7 @@ use crate::models::visibility::Visibility;
 pub mod status;
 pub mod visibility;
 pub mod profiles;
+pub mod entries;
 pub mod pagination;
 
 #[derive(Debug, Serialize, Deserialize, Queryable)]
@@ -24,24 +25,6 @@ pub struct Account {
     pub modified: Option<chrono::NaiveDateTime>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub modified_hash: Option<chrono::NaiveDateTime>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Queryable)]
-pub struct Entry {
-    #[serde(with = "id_serde")]
-    pub id: i64,
-    #[serde(with = "id_serde")]
-    pub author: i64,
-    #[serde(with = "id_serde")]
-    pub journal: i64,
-    pub created: chrono::NaiveDateTime,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub modified: Option<chrono::NaiveDateTime>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub modifiedc: Option<chrono::NaiveDateTime>,
-    pub content: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub significance: Option<f64>
 }
 
 #[derive(Debug, Serialize, Deserialize, Queryable)]

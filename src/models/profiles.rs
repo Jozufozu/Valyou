@@ -1,4 +1,5 @@
-use diesel::{sql_types::*, Queryable};
+use diesel::{Queryable, sql_types::*};
+
 use crate::models::{self, visibility::{db, Visibility}};
 
 #[derive(Debug, Serialize, Deserialize)]

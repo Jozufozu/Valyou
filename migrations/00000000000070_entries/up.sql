@@ -22,9 +22,26 @@ create table entries
 create table entry_tags
 (
     entry bigint references entries on update cascade on delete cascade,
-    tag   varchar not null,
+    tag   varchar(48) not null check ( tag ~* '[^\s,]{3,48}' ),
     primary key (entry, tag)
 );
+
+create view full_entries as
+    select entryid, author, journal, created, modified, modifiedc, content, significance, hidden,
+           (select string_agg(tag,',')
+            from entry_tags
+            where entry=entryid) as tags
+    from entries;
+
+create view visible_entries as
+    select entryid, author, journal, created, modified, modifiedc, content, significance, tags
+    from full_entries
+    where not hidden;
+
+create view hidden_entries as
+    select entryid, author, journal, created, modified, modifiedc, content, significance, tags
+    from full_entries
+    where hidden;
 
 create or replace function edit_entry() returns trigger as
 $$

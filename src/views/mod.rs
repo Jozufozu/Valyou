@@ -40,3 +40,31 @@ table! {
         since -> Timestamp,
     }
 }
+
+table! {
+    visible_entries (entryid) {
+        entryid -> Int8,
+        author -> Int8,
+        journal -> Int8,
+        created -> Timestamp,
+        modified -> Nullable<Timestamp>,
+        modifiedc -> Nullable<Timestamp>,
+        content -> Varchar,
+        significance -> Nullable<Float8>,
+        tags -> Varchar,
+    }
+}
+
+table! {
+    hidden_entries (entryid) {
+        entryid -> Int8,
+        author -> Int8,
+        journal -> Int8,
+        created -> Timestamp,
+        modified -> Nullable<Timestamp>,
+        modifiedc -> Nullable<Timestamp>,
+        content -> Varchar,
+        significance -> Nullable<Float8>,
+        tags -> Varchar,
+    }
+}

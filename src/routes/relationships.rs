@@ -3,17 +3,18 @@ use actix_web::{HttpResponse, Responder, web};
 use diesel::prelude::*;
 
 use crate::errors::{Error, RequestResult};
+use crate::models::pagination::Paginated;
+use crate::models::profiles::Friend;
 use crate::models::status::RelationStatus;
 use crate::Pool;
 use crate::routes::account::get_identity;
-use crate::models::profiles::Friend;
 
 pub async fn send_request(to: web::Path<i64>, ident: Identity, pool: web::Data<Pool>) -> RequestResult {
     let friendid = to.into_inner();
     let userid = get_identity(&ident)?.userid;
 
     if userid == friendid {
-        return Err(Error::BadRequest("You're already friends with yourself".into()));
+        return Err(Error::BadRequest("provided own userid".into()));
     }
 
     let (pair, pending) = if userid < friendid {
@@ -36,7 +37,7 @@ pub async fn accept_request(path: web::Path<i64>, ident: Identity, pool: web::Da
     let userid = get_identity(&ident)?.userid;
 
     if userid == friendid {
-        return Err(Error::BadRequest("You're already friends with yourself".into()));
+        return Err(Error::BadRequest("provided own userid".into()));
     }
 
     let (pair, required) = if userid < friendid {
@@ -56,7 +57,7 @@ pub async fn accept_request(path: web::Path<i64>, ident: Identity, pool: web::Da
     if success > 0 {
         Ok(HttpResponse::NoContent().finish())
     } else {
-        Err(Error::BadRequest(String::new()))
+        Err(Error::BadRequest("provided own userid".into()))
     }
 }
 
@@ -65,7 +66,7 @@ pub async fn deny_request(to: web::Path<i64>, ident: Identity, pool: web::Data<P
     let userid = get_identity(&ident)?.userid;
 
     if userid == friendid {
-        return Err(Error::BadRequest("You're always friends with yourself".into()));
+        return Err(Error::BadRequest("provided own userid".into()));
     }
 
     let (pair, required) = if userid < friendid {
@@ -87,7 +88,7 @@ pub async fn remove_friend(to: web::Path<i64>, ident: Identity, pool: web::Data<
     let userid = get_identity(&ident)?.userid;
 
     if userid == friendid {
-        return Err(Error::BadRequest("You're always friends with yourself".into()));
+        return Err(Error::BadRequest("provided own userid".into()));
     }
 
     let pair = get_relation_pk(userid, friendid);
@@ -104,7 +105,7 @@ pub async fn view_own_friends(ident: Identity, pool: web::Data<Pool>) -> Request
     let me = get_identity(&ident)?.userid;
 
     let friends: Vec<Friend> = {
-        use crate::schemas::views::public_friends::dsl::*;
+        use crate::views::public_friends::dsl::*;
 
         public_friends
             .select((friend, username, discriminator, summary, bio, since))
@@ -113,14 +114,14 @@ pub async fn view_own_friends(ident: Identity, pool: web::Data<Pool>) -> Request
             .get_results(&pool.get()?)?
     };
 
-    Ok(HttpResponse::Ok().json(friends))
+    Ok(HttpResponse::Ok().json(Paginated::paginate(friends)))
 }
 
 pub async fn show_requests(ident: Identity, pool: web::Data<Pool>) -> RequestResult {
     let me = get_identity(&ident)?.userid;
 
     let friends: Vec<Friend> = {
-        use crate::schemas::views::friend_requests::dsl::*;
+        use crate::views::friend_requests::dsl::*;
 
         friend_requests
             .select((friend, username, discriminator, summary, bio, since))
@@ -129,7 +130,7 @@ pub async fn show_requests(ident: Identity, pool: web::Data<Pool>) -> RequestRes
             .get_results(&pool.get()?)?
     };
 
-    Ok(HttpResponse::Ok().json(friends))
+    Ok(HttpResponse::Ok().json(Paginated::paginate(friends)))
 }
 
 #[inline(always)]

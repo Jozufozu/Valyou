@@ -1,22 +1,23 @@
+#[macro_use] extern crate actix_rt;
+#[macro_use] extern crate actix_web;
+#[macro_use] extern crate derive_more;
 #[macro_use] extern crate diesel;
 #[macro_use] extern crate dotenv_codegen;
 #[macro_use] extern crate serde_derive;
 #[macro_use] extern crate serde_json;
-#[macro_use] extern crate derive_more;
-#[macro_use] extern crate actix_rt;
-#[macro_use] extern crate actix_web;
 
-use actix_web::{web, middleware, App, HttpServer, Responder, HttpResponse};
+use std::io;
+
+use actix_identity::{CookieIdentityPolicy, IdentityService};
+use actix_web::{App, HttpResponse, HttpServer, middleware, Responder, web};
 use diesel::prelude::*;
 use diesel::r2d2::{self, ConnectionManager};
 use dotenv;
-use actix_identity::{CookieIdentityPolicy, IdentityService};
-use std::io;
 use env_logger;
 
 mod models;
 mod schema;
-mod schemas;
+mod views;
 mod errors;
 mod routes;
 

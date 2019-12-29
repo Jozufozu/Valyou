@@ -70,7 +70,7 @@ pub async fn show(ident: Identity) -> RequestResult {
 }
 
 pub async fn register(data: web::Json<CreateRequest>, pool: web::Data<Pool>) -> RequestResult {
-    use crate::schemas::views::new_account::dsl::*;
+    use crate::views::new_account::dsl::*;
 
     let hashed_password = bcrypt::hash(&data.password, 9)
         .map_err(|_| Error::InternalServerError)?;

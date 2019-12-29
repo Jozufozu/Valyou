@@ -3,20 +3,30 @@ use actix_web::{HttpResponse, Responder, web};
 use diesel::prelude::*;
 
 use crate::errors::RequestResult;
+use crate::models::profiles::OwnProfile;
 use crate::models::visibility::Visibility;
 use crate::Pool;
 use crate::routes::account::get_identity;
-use crate::models::profiles::OwnProfile;
+use crate::schema::profiles;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, AsChangeset)]
+#[table_name = "profiles"]
 pub struct EditRequest {
-    pub username: Option<String>,
+    // pub username: Option<String>,
     pub summary: Option<String>,
     pub bio: Option<String>,
 }
 
-pub async fn edit(request: web::Json<EditRequest>, ident: Identity, pool: web::Data<Pool>) -> impl Responder {
-    HttpResponse::MethodNotAllowed().finish()
+pub async fn edit(request: web::Json<EditRequest>, ident: Identity, pool: web::Data<Pool>) -> RequestResult {
+    let me = get_identity(&ident)?.userid;
+
+    use crate::schema::profiles::dsl::*;
+    diesel::update(profiles)
+        .set(request.into_inner())
+        .filter(userid.eq(me))
+        .execute(&pool.get()?)?;
+
+    view_self(ident, pool).await
 }
 
 pub async fn set_visibility(to: web::Path<Visibility>, ident: Identity, pool: web::Data<Pool>) -> RequestResult {

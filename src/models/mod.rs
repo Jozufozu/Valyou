@@ -1,14 +1,16 @@
+use std::fmt;
+
 use diesel::{Queryable, sql_types::*};
+use diesel::pg::Pg;
+use serde::{de, Deserializer};
+use serde::de::Visitor;
 
 use crate::models::visibility::Visibility;
-use diesel::pg::Pg;
-use serde::de::Visitor;
-use std::fmt;
-use serde::{de, Deserializer};
 
 pub mod status;
 pub mod visibility;
 pub mod profiles;
+pub mod pagination;
 
 #[derive(Debug, Serialize, Deserialize, Queryable)]
 pub struct Account {
@@ -75,9 +77,10 @@ pub struct SearchQuery {
 const fn default_limit() -> i64 { 20 }
 
 pub mod id_serde {
-    use serde::de::Visitor;
-    use serde::{Serializer, ser, de, Deserializer};
     use std::fmt;
+
+    use serde::{de, Deserializer, ser, Serializer};
+    use serde::de::Visitor;
 
     pub fn serialize<S>(val: &i64, ser: S) -> Result<S::Ok, S::Error>
         where
@@ -118,9 +121,10 @@ pub mod id_serde {
 }
 
 pub mod discriminator_serde {
-    use serde::de::Visitor;
-    use serde::{Serializer, ser, de, Deserializer};
     use std::fmt;
+
+    use serde::{de, Deserializer, ser, Serializer};
+    use serde::de::Visitor;
 
     pub fn serialize<S>(val: &i16, ser: S) -> Result<S::Ok, S::Error>
         where

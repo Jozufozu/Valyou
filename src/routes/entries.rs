@@ -4,6 +4,7 @@ use diesel::{prelude::*, QueryDsl};
 
 use crate::errors::{Error, RequestResult};
 use crate::models::{self, Entry, SearchMethod, SearchQuery};
+use crate::models::pagination::{Paginated, Pagination};
 use crate::Pool;
 use crate::routes::account::get_identity;
 use crate::schema::{entries, entry_tags};
@@ -161,9 +162,9 @@ pub async fn in_journal(args: web::Path<(i64, SearchMethod)>, query: web::Query<
         }
     };
 
-    let map: Vec<EntryResponse> = found.into_iter().map(|e| EntryResponse::new(e, Vec::with_capacity(0), claims.userid)).collect() ;
+    let map = found.into_iter().map(|e| EntryResponse::new(e, Vec::with_capacity(0), claims.userid)).collect() ;
 
-    Ok(HttpResponse::Ok().json(map))
+    Ok(HttpResponse::Ok().json(Paginated::paginate(map)))
 }
 
 pub async fn find(entryid: web::Path<(i64, i64)>, ident: Identity, pool: web::Data<Pool>) -> RequestResult {

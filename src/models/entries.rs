@@ -1,6 +1,6 @@
 use diesel::{Queryable, sql_types::*};
 
-use crate::models::{self, visibility::{db, Visibility}};
+use crate::models;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Entry {

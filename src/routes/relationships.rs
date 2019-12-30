@@ -1,10 +1,10 @@
 use actix_identity::Identity;
-use actix_web::{HttpResponse, Responder, web};
+use actix_web::{HttpResponse, web};
 use diesel::prelude::*;
 
 use crate::errors::{Error, RequestResult};
-use crate::models::pagination::Paginated;
 use crate::models::profiles::Friend;
+use crate::models::search::{Paginated, SearchMethod};
 use crate::models::status::RelationStatus;
 use crate::Pool;
 use crate::routes::account::get_identity;
@@ -114,7 +114,7 @@ pub async fn view_own_friends(ident: Identity, pool: web::Data<Pool>) -> Request
             .get_results(&pool.get()?)?
     };
 
-    Ok(HttpResponse::Ok().json(Paginated::paginate(friends)))
+    Ok(HttpResponse::Ok().json(Paginated::paginate(friends, SearchMethod::After)))
 }
 
 pub async fn show_requests(ident: Identity, pool: web::Data<Pool>) -> RequestResult {
@@ -130,7 +130,7 @@ pub async fn show_requests(ident: Identity, pool: web::Data<Pool>) -> RequestRes
             .get_results(&pool.get()?)?
     };
 
-    Ok(HttpResponse::Ok().json(Paginated::paginate(friends)))
+    Ok(HttpResponse::Ok().json(Paginated::paginate(friends, SearchMethod::After)))
 }
 
 #[inline(always)]

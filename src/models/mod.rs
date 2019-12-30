@@ -1,9 +1,4 @@
-use std::fmt;
-
 use diesel::{Queryable, sql_types::*};
-use diesel::pg::Pg;
-use serde::{de, Deserializer};
-use serde::de::Visitor;
 
 use crate::models::visibility::Visibility;
 
@@ -11,7 +6,11 @@ pub mod status;
 pub mod visibility;
 pub mod profiles;
 pub mod entries;
-pub mod pagination;
+pub mod search;
+
+sql_function! {
+    fn can_see_entry(me: Bigint, author: Bigint, journal: Bigint) -> Bool;
+}
 
 #[derive(Debug, Serialize, Deserialize, Queryable)]
 pub struct Account {
@@ -41,23 +40,6 @@ pub struct Journal {
     pub visibility: Visibility,
     pub color: i32
 }
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum SearchMethod {
-    Before,
-    After
-}
-
-#[derive(Debug, Deserialize)]
-pub struct SearchQuery {
-    pub id: i64,
-    #[serde(default = "default_limit")]
-    pub limit: i64
-}
-
-#[inline(always)]
-const fn default_limit() -> i64 { 20 }
 
 pub mod id_serde {
     use std::fmt;

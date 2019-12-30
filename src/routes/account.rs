@@ -4,7 +4,6 @@ use actix_identity::Identity;
 use actix_web::{HttpResponse, Responder, web};
 use bcrypt;
 use diesel::prelude::*;
-use diesel::r2d2;
 use dotenv;
 use jsonwebtoken::{Algorithm, Validation};
 

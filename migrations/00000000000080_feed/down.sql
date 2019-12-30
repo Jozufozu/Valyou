@@ -1,0 +1,1 @@
+drop function if exists can_see_entry();

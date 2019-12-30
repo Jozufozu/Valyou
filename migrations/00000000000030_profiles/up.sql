@@ -31,7 +31,7 @@ declare
     num smallint;
 begin
     if (select count(1) from usernames where usernames.username = handle) = 9999 then
-        raise exception 'handle_not_available';
+        raise check_violation using constraint = 'handle_not_available';
     end if;
 
     select tag

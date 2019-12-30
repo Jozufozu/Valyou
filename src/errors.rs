@@ -1,6 +1,7 @@
-use actix_web::{ResponseError, HttpResponse};
-use diesel::result::{Error as DBError, DatabaseErrorKind};
 use std::error::Error as STDError;
+
+use actix_web::{HttpResponse, ResponseError};
+use diesel::result::{DatabaseErrorKind, Error as DBError};
 use serde::export::TryFrom;
 
 pub type ValyouResult<T> = std::result::Result<T, Error>;
@@ -28,7 +29,8 @@ pub enum ConstraintViolation {
     ProperEmail,
     EditAfterDay,
     EditTimestamp,
-    ArePublic
+    ArePublic,
+    HandleNotAvailable,
 }
 
 impl STDError for Error {}
@@ -87,6 +89,7 @@ impl std::convert::TryFrom<&str> for ConstraintViolation {
             "edit_after_day" => Ok(ConstraintViolation::EditAfterDay),
             "edit_timestamp" => Ok(ConstraintViolation::EditTimestamp),
             "are_public" => Ok(ConstraintViolation::ArePublic),
+            "handle_not_available" => Ok(ConstraintViolation::HandleNotAvailable),
             _ => Err(())
         }
     }
@@ -95,11 +98,12 @@ impl std::convert::TryFrom<&str> for ConstraintViolation {
 impl From<ConstraintViolation> for Error {
     fn from(cv: ConstraintViolation) -> Self {
         match cv {
-            ConstraintViolation::AuthorOwnsJournal => Error::BadRequest("User does not own journal".into()),
-            ConstraintViolation::ProperEmail => Error::BadRequest("Please provide a valid email address".into()),
-            ConstraintViolation::EditAfterDay => Error::BadRequest("Cannot edit the content of an entry 24 hours after it's creation".into()),
-            ConstraintViolation::EditTimestamp => Error::BadRequest("Cannot edit a timestamp".into()),
-            ConstraintViolation::ArePublic => Error::BadRequest("You and the other person must have non-private profiles".into()),
+            ConstraintViolation::AuthorOwnsJournal => Error::BadRequest("user does not own journal".into()),
+            ConstraintViolation::ProperEmail => Error::BadRequest("please provide a valid email address".into()),
+            ConstraintViolation::EditAfterDay => Error::BadRequest("cannot edit the content of an entry 24 hours after it's creation".into()),
+            ConstraintViolation::EditTimestamp => Error::BadRequest("cannot edit a timestamp".into()),
+            ConstraintViolation::ArePublic => Error::BadRequest("both users must have non-private profiles".into()),
+            ConstraintViolation::HandleNotAvailable => Error::BadRequest("there are too many users with that name already".into()),
         }
     }
 }

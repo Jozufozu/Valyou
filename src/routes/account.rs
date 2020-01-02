@@ -88,12 +88,8 @@ pub async fn login(data: web::Json<AuthRequest>, ident: Identity, pool: web::Dat
         return Err(Error::Unauthorized);
     }
 
-    let account: Account = {
-        let db = pool.get()?;
-
-        accounts.filter(email.eq(&data.email))
-            .first::<Account>(&db)?
-    };
+    let account: Account = accounts.filter(email.eq(&data.email))
+            .first(&pool.get()?)?;
 
     let verified = bcrypt::verify(&data.password, &account.hash)
         .map_err(|_| Error::InternalServerError)?;

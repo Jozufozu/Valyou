@@ -12,7 +12,7 @@ create table profiles
 create table usernames
 (
     userid        bigint primary key references profiles on update cascade on delete cascade,
-    username      varchar(32)  not null check ( username ~* '\S{3,32}' ),
+    username      varchar(32)  not null check ( username ~* '[^\s#@:]{2,32}' ),
     discriminator smallint not null check ( discriminator < 10000 and discriminator > 0 ),
     modified      timestamp,
 
@@ -24,6 +24,12 @@ select u.userid, u.username, u.discriminator, p.summary, p.bio
 from profiles p
          inner join usernames u on p.userid = u.userid
 where p.visibility != 'private';
+
+create view full_profiles as
+select u.userid, u.username, u.discriminator, p.summary, p.bio, p.visibility, a.created, p.modified, u.modified as username_modified
+from profiles p
+         inner join usernames u on p.userid = u.userid
+         inner join account_age a on p.userid = a.userid;
 
 create or replace function gen_discriminator(handle varchar) returns smallint as
 $$
@@ -77,7 +83,9 @@ execute procedure edit_username();
 create or replace function set_discriminator() returns trigger as
 $$
 begin
-    select gen_discriminator(new.username) into new.discriminator;
+    if new.username != old.username then
+        select gen_discriminator(new.username) into new.discriminator;
+    end if;
     return new;
 end;
 $$ language plpgsql;

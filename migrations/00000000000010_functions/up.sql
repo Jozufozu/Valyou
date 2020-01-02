@@ -3,7 +3,7 @@ create sequence global_id_sequence;
 create or replace function id_generator(out result bigint) as
 $$
 declare
-    our_epoch  bigint := 1546300800000;
+    our_epoch  bigint := 1577836800000;
     seq_id     bigint;
     now_millis bigint;
     -- the id of this db shard, must be set for each

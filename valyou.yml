@@ -51,22 +51,6 @@ paths:
                 $ref: "#/components/schemas/Account"
         '401':
           description: Login required
-    patch:
-      tags:
-        - Account
-      summary: Edit account details
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Account"
-      security:
-        - LoggedIn: []
-      responses:
-        '204':
-          description: Account created
-        '400':
-          description: Bad request
   /account/auth:
     post:
       tags:
@@ -122,25 +106,6 @@ paths:
                 $ref: "#/components/schemas/Journal"
         '400':
           description: Invalid input
-        '401':
-          description: Login required
-    get:
-      summary: Get a list of journals relavent by the user
-      description: Will include default journals as well as user created journals.
-      tags:
-        - Journals
-      security:
-        - LoggedIn: []
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: array
-                maxItems: 40
-                items:
-                  $ref: "#/components/schemas/Journal"
         '401':
           description: Login required
   /journal/{journalid}:
@@ -295,6 +260,7 @@ paths:
           application/json:
             schema:
               type: array
+              maxItems: 20
               items:
                 type: string
       security:
@@ -413,9 +379,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Profile"
+                $ref: "#/components/schemas/Profile"
         '401':
           description: Login required
     patch:
@@ -428,7 +392,19 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/Profile"
+              type: object
+              additionalProperties: false
+              properties:
+                bio:
+                  type: string
+                  example: I am a good person!
+                  maxLength: 500
+                summary:
+                  type: string
+                  example: I am a person!
+                  maxLength: 120
+                visibility:
+                  $ref: "#/components/schemas/Visibility"
       responses:
         '200':
           description: Updated
@@ -440,24 +416,23 @@ paths:
           description: Bad request
         '401':
           description: Login required
-  /user/self/profile/set_visibility/{visibility}:
-    patch:
+  /user/self/journals:
+    get:
+      summary: Get a list of journals created by the user
       tags:
-        - Profiles
-      summary: Change the user's profile's visibility
+        - Journals
       security:
         - LoggedIn: []
-      parameters:
-        - name: visibility
-          in: path
-          required: true
-          schema:
-            $ref: "#/components/schemas/Visibility"
       responses:
         '200':
-          description: Updated
-        '400':
-          description: Bad request
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                maxItems: 30
+                items:
+                  $ref: "#/components/schemas/Journal"
         '401':
           description: Login required
   /user/self/friends:
@@ -599,8 +574,48 @@ paths:
           description: Login required
         '403':
           description: Blocked by user
+  /user:
+    get:
+      tags:
+        - Profiles
+      summary: Search for users by name
+      security:
+        - LoggedIn: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: tag
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/Discriminator"
+        - name: count
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 30
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad request
+        '401':
+          description: Login required
 components:
   schemas:
+    Identifier:
+      type: object
+      additionalProperties: false
+      properties:
+        username:
+          $ref: "#/components/schemas/Username"
+        discriminator:
+          $ref: "#/components/schemas/Discriminator"
     Snowflake:
       type: string
       description: A globally unique, time sortable id
@@ -609,16 +624,22 @@ components:
       minLength: 19
       pattern: '[0-9]{19}'
     Username:
-        type: string
-        example: personman123
-        pattern: '\S{2,32}'
-        maxLength: 32
+      type: string
+      example: personman123
+      pattern: '\S{2,32}'
+      maxLength: 32
     Discriminator:
-      format: stringS
+      type: string
       pattern: '[0-9]{4}'
       maxLength: 4
       minLength: 4
       example: '4312'
+    Tag:
+      type: string
+      pattern: '[^\s,]{3,48}'
+      maxLength: 48
+      minLength: 3
+      example: 'vacation'
     Profile:
       type: object
       additionalProperties: false
@@ -626,9 +647,7 @@ components:
         id:
           $ref: "#/components/schemas/Snowflake"
         username:
-          $ref: "#/components/schemas/Username"
-        discriminator:
-          $ref: "#/components/schemas/Username"
+          $ref: "#/components/schemas/Identifier"
         friends:
           type: boolean
           readOnly: true
@@ -649,6 +668,12 @@ components:
           format: date-time
           nullable: true
           readOnly: true
+        username_modified:
+          type: string
+          format: date-time
+          nullable: true
+          readOnly: true
+          
     Account:
       type: object
       additionalProperties: false
@@ -659,9 +684,7 @@ components:
           type: string
           format: email
         username:
-          $ref: "#/components/schemas/Username"
-        discriminator:
-          $ref: "#/components/schemas/Discriminator"
+          $ref: "#/components/schemas/Identifier"
         created:
           type: string
           format: date-time
@@ -671,12 +694,6 @@ components:
           format: date-time
           nullable: true
           readOnly: true
-    Settings:
-      type: object
-      additionalProperties: false
-      properties:
-        profile_visibility:
-          $ref: "#/components/schemas/Visibility"
     Visibility:
       type: string
       enum:
@@ -767,19 +784,13 @@ components:
           type: string
           description: The url that will retrieve the next set of values from the request
   responses:
-    AccountSettings:
-      description: OK
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/Settings"
     EntryList:
       description: OK
       content:
         application/json:
           schema:
             type: array
-            maxLength: 40
+            maxItems: 30
             items:
               $ref: "#/components/schemas/Entry"
     FriendsList:
@@ -788,9 +799,10 @@ components:
         application/json:
           schema:
             type: array
-            maxItems: 40
+            maxItems: 30
             items:
               type: object
+              additionalProperties: false
               properties:
                 with:
                   $ref: "#/components/schemas/Profile"

@@ -21,13 +21,14 @@ pub struct Profile {
 }
 
 #[derive(Debug, Serialize)]
-pub struct OwnProfile {
+pub struct FullProfile {
     pub profile: Profile,
     pub visibility: Visibility,
+    pub created: chrono::NaiveDateTime,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub modified: Option<chrono::NaiveDateTime>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub umodified: Option<chrono::NaiveDateTime>,
+    pub username_modified: Option<chrono::NaiveDateTime>,
 }
 
 #[derive(Debug, Serialize)]
@@ -37,6 +38,7 @@ pub struct Friend {
 }
 
 impl Profile {
+    #[inline(always)]
     pub fn new(userid: i64, username: String, discriminator: i16, summary: Option<String>, bio: Option<String>) -> Self {
         Profile {
             userid,
@@ -50,15 +52,16 @@ impl Profile {
     }
 }
 
-impl Queryable<(BigInt, Text, SmallInt, Nullable<Text>, Nullable<Text>, db::Visibility, Nullable<Timestamp>, Nullable<Timestamp>), diesel::pg::Pg> for OwnProfile {
-    type Row = (i64, String, i16, Option<String>, Option<String>, Visibility, Option<chrono::NaiveDateTime>, Option<chrono::NaiveDateTime>);
+impl Queryable<(BigInt, Text, SmallInt, Nullable<Text>, Nullable<Text>, db::Visibility, Timestamp, Nullable<Timestamp>, Nullable<Timestamp>), diesel::pg::Pg> for FullProfile {
+    type Row = (i64, String, i16, Option<String>, Option<String>, Visibility, chrono::NaiveDateTime, Option<chrono::NaiveDateTime>, Option<chrono::NaiveDateTime>);
 
     fn build(row: Self::Row) -> Self {
-        OwnProfile {
+        FullProfile {
             profile: Profile::new(row.0, row.1, row.2, row.3, row.4),
             visibility: row.5,
-            modified: row.6,
-            umodified: row.7
+            created: row.6,
+            modified: row.7,
+            username_modified: row.8
         }
     }
 }
@@ -71,5 +74,13 @@ impl Queryable<(BigInt, Text, SmallInt, Nullable<Text>, Nullable<Text>, Timestam
             with: Profile::new(row.0, row.1, row.2, row.3, row.4),
             since: row.5
         }
+    }
+}
+
+impl Queryable<(BigInt, Text, SmallInt, Nullable<Text>, Nullable<Text>), diesel::pg::Pg> for Profile {
+    type Row = (i64, String, i16, Option<String>, Option<String>);
+
+    fn build(row: Self::Row) -> Self {
+        Profile::new(row.0, row.1, row.2, row.3, row.4)
     }
 }

@@ -57,7 +57,7 @@ pub async fn accept_request(path: web::Path<i64>, ident: Identity, pool: web::Da
     if success > 0 {
         Ok(HttpResponse::NoContent().finish())
     } else {
-        Err(Error::BadRequest("provided own userid".into()))
+        Err(Error::BadRequest("no request from that user".into()))
     }
 }
 

@@ -9,7 +9,11 @@ pub mod entries;
 pub mod search;
 
 sql_function! {
-    fn can_see_entry(me: Bigint, author: Bigint, journal: Bigint) -> Bool;
+    fn can_see(me: Bigint, author: Bigint, journal: Bigint) -> Bool;
+}
+
+sql_function! {
+    fn can_see_user(me: Bigint, other: Bigint) -> Bool;
 }
 
 #[derive(Debug, Serialize, Deserialize, Queryable)]
@@ -19,7 +23,6 @@ pub struct Account {
     pub email: String,
     #[serde(skip)]
     pub hash: String,
-    pub created: chrono::NaiveDateTime,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub modified: Option<chrono::NaiveDateTime>,
     #[serde(skip_serializing_if = "Option::is_none")]

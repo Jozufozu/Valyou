@@ -1,4 +1,5 @@
 drop view searchable;
+drop view full_profiles;
 drop table usernames;
 drop table profiles;
 drop type visibility;

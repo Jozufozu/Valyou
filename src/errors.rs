@@ -19,6 +19,9 @@ pub enum Error {
     #[display(fmt = "Unauthorized")]
     Unauthorized,
 
+    #[display(fmt = "Forbidden")]
+    Forbidden,
+
     #[display(fmt = "Not Found")]
     NotFound,
 }
@@ -43,7 +46,8 @@ impl ResponseError for Error {
                 HttpResponse::InternalServerError().json("Internal Server Error, Please try later")
             }
             Error::BadRequest(message) => HttpResponse::BadRequest().json(message),
-            Error::Unauthorized => HttpResponse::Unauthorized().json("Unauthorized"),
+            Error::Unauthorized => HttpResponse::Unauthorized().json("Login required"),
+            Error::Forbidden => HttpResponse::Forbidden().json("Forbidden"),
             Error::NotFound => HttpResponse::NotFound().finish()
         }
     }

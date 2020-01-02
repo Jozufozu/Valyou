@@ -22,7 +22,7 @@ create table entries
 create table entry_tags
 (
     entry bigint references entries on update cascade on delete cascade,
-    tag   varchar(48) not null check ( tag ~* '[^\s,]{3,48}' ),
+    tag   varchar(48) not null check ( tag ~* '[^\s,#@:]{3,48}' ),
     primary key (entry, tag)
 );
 

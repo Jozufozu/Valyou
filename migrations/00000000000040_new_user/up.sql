@@ -4,6 +4,7 @@ declare
     uid bigint;
 begin
     insert into accounts (email, hash) values (new.email, new.hash) returning (userid) into uid;
+    insert into account_age (userid) values (uid);
     insert into profiles (userid) values (uid);
     insert into usernames (userid, username) values (uid, new.username);
 

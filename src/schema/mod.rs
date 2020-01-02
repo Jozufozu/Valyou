@@ -2,11 +2,20 @@ table! {
     use crate::models::{status::Status, visibility::db::Visibility};
     use diesel::sql_types::*;
 
+    account_age (userid) {
+        userid -> Int8,
+        created -> Timestamp,
+    }
+}
+
+table! {
+    use crate::models::{status::Status, visibility::db::Visibility};
+    use diesel::sql_types::*;
+
     accounts (userid) {
         userid -> Int8,
         email -> Varchar,
         hash -> Varchar,
-        created -> Timestamp,
         modified -> Nullable<Timestamp>,
         modified_hash -> Nullable<Timestamp>,
     }
@@ -92,6 +101,7 @@ table! {
     }
 }
 
+joinable!(account_age -> accounts (userid));
 joinable!(entries -> journals (journal));
 joinable!(entries -> profiles (author));
 joinable!(entry_tags -> entries (entry));
@@ -100,6 +110,7 @@ joinable!(profiles -> accounts (userid));
 joinable!(usernames -> profiles (userid));
 
 allow_tables_to_appear_in_same_query!(
+    account_age,
     accounts,
     entries,
     entry_tags,

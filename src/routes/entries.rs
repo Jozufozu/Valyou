@@ -1,11 +1,11 @@
-use std::cmp::max;
+use std::cmp::min;
 
 use actix_identity::Identity;
 use actix_web::{HttpResponse, web};
 use diesel::{prelude::*, QueryDsl};
 
 use crate::errors::RequestResult;
-use crate::models::{can_see_entry, entries::Entry};
+use crate::models::{can_see, entries::Entry};
 use crate::models::search::{Paginated, SearchMethod, SearchQuery};
 use crate::Pool;
 use crate::routes::account::get_identity;
@@ -82,26 +82,24 @@ pub async fn create(path: web::Path<i64>, form: web::Json<CreateRequest>, ident:
 
 pub async fn edit(path: web::Path<(i64, i64)>, json: web::Json<EditRequest>, ident: Identity, pool: web::Data<Pool>) -> RequestResult {
     let (jid, eid) = path.into_inner();
-    let edit = json.into_inner();
     let me = get_identity(&ident)?.userid;
 
     use crate::schema::entries::dsl::*;
 
     let entry: Entry = diesel::update(entries)
         .filter(entryid.eq(eid).and(journal.eq(jid)).and(author.eq(me)))
-        .set(&edit)
+        .set(json.into_inner())
         .returning((entryid, author, journal, created, modified, modifiedc, content, significance))
         .get_result(&pool.get()?)?;
 
     Ok(HttpResponse::Ok().json(entry))
 }
 
-pub async fn in_journal(args: web::Path<(i64, SearchMethod)>, query: web::Query<SearchQuery>, ident: Identity, pool: web::Data<Pool>) -> RequestResult {
-    let (journalid, method) = args.into_inner();
-    let SearchQuery { id, limit } = query.into_inner();
-    let limit = max(limit, 30);
-
+pub async fn in_journal(path: web::Path<(i64, SearchMethod)>, query: web::Query<SearchQuery>, ident: Identity, pool: web::Data<Pool>) -> RequestResult {
     let me = get_identity(&ident)?.userid;
+
+    let (journalid, method) = path.into_inner();
+    let (id, limit) = query.into_inner().into_parts();
 
     let found: Vec<Entry> = {
         use crate::views::visible_entries::dsl::*;
@@ -109,14 +107,14 @@ pub async fn in_journal(args: web::Path<(i64, SearchMethod)>, query: web::Query<
         match method {
             SearchMethod::Before => {
                 visible_entries
-                    .filter(entryid.lt(id).and(journal.eq(journalid)).and(can_see_entry(me, author, journal)))
+                    .filter(entryid.lt(id).and(journal.eq(journalid)).and(can_see(me, author, journal)))
                     .order(entryid.desc())
                     .limit(limit)
                     .get_results(&pool.get()?)?
             },
             SearchMethod::After => {
                 visible_entries
-                    .filter(entryid.gt(id).and(journal.eq(journalid)).and(can_see_entry(me, author, journal)))
+                    .filter(entryid.gt(id).and(journal.eq(journalid)).and(can_see(me, author, journal)))
                     .order(entryid.asc())
                     .limit(limit)
                     .get_results(&pool.get()?)?
@@ -127,8 +125,8 @@ pub async fn in_journal(args: web::Path<(i64, SearchMethod)>, query: web::Query<
     Ok(HttpResponse::Ok().json(Paginated::paginate(found, method)))
 }
 
-pub async fn find(entryid: web::Path<(i64, i64)>, ident: Identity, pool: web::Data<Pool>) -> RequestResult {
-    let (jid, eid) = entryid.into_inner();
+pub async fn find(path: web::Path<(i64, i64)>, ident: Identity, pool: web::Data<Pool>) -> RequestResult {
+    let (jid, eid) = path.into_inner();
 
     let me = get_identity(&ident)?.userid;
 
@@ -136,7 +134,7 @@ pub async fn find(entryid: web::Path<(i64, i64)>, ident: Identity, pool: web::Da
         use crate::views::visible_entries::dsl::*;
 
         visible_entries
-            .filter(entryid.eq(eid).and(journal.eq(jid)).and(can_see_entry(me, author, journal)))
+            .filter(entryid.eq(eid).and(journal.eq(jid)).and(can_see(me, author, journal)))
             .get_result(&pool.get()?)?
     };
 
